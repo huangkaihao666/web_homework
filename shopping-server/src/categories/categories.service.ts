@@ -28,7 +28,8 @@ export class CategoriesService {
     const newId = Math.max(...this.categories.map(c => c.id)) + 1;
     const newCategory = {
       id: newId,
-      ...createCategoryDto
+      ...createCategoryDto,
+      icon: createCategoryDto.icon || 'Question'
     };
     this.categories.push(newCategory);
     return newCategory;

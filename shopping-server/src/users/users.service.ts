@@ -55,7 +55,10 @@ export class UsersService {
     const newId = Math.max(...this.users.map(u => u.id)) + 1;
     const newUser = {
       id: newId,
-      ...createUserDto,
+      username: createUserDto.username,
+      email: createUserDto.email,
+      password: createUserDto.password,
+      avatar: createUserDto.avatar || 'https://via.placeholder.com/150',  // 设置默认头像
       role: 'user'
     };
     

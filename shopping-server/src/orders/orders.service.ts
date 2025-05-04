@@ -64,13 +64,23 @@ export class OrdersService {
       return sum + ((item.price || 0) * item.quantity);
     }, 0);
     
+    // 确保每个订单项目都有价格
+    const processedItems = createOrderDto.items.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.price || 0  // 确保价格总是有值
+    }));
+    
     const newId = this.generateOrderId();
     const newOrder = {
       id: newId,
-      ...createOrderDto,
+      userId: createOrderDto.userId,
+      items: processedItems,
       totalAmount,
       status: OrderStatus.PENDING_PAYMENT,
-      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19)
+      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      shippingAddress: createOrderDto.shippingAddress || '未提供地址',
+      contactPhone: createOrderDto.contactPhone || '未提供联系电话'
     };
     
     this.orders.push(newOrder);
