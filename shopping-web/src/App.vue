@@ -1,30 +1,90 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import { ref } from 'vue'
+import { House, ShoppingCart, List, User, Plus, ArrowDown } from '@element-plus/icons-vue'
+
+// 用户登录状态管理，实际应用中应该从状态管理中获取
+const isLoggedIn = ref(false)
+const username = ref('用户名')
+
+const logout = () => {
+  // 实现登出逻辑
+  isLoggedIn.value = false
+}
 </script>
 
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+  <div class="app-container">
+    <header>
+      <el-menu mode="horizontal" router>
+        <el-menu-item index="/">
+          <el-icon><House /></el-icon>
+          首页
+        </el-menu-item>
+        <el-menu-item index="/cart">
+          <el-icon><ShoppingCart /></el-icon>
+          购物车
+        </el-menu-item>
+        <el-menu-item index="/orders">
+          <el-icon><List /></el-icon>
+          我的订单
+        </el-menu-item>
+        <div class="flex-grow"></div>
+        <el-menu-item index="/login" v-if="!isLoggedIn">
+          <el-icon><User /></el-icon>
+          登录
+        </el-menu-item>
+        <el-menu-item index="/register" v-if="!isLoggedIn">
+          <el-icon><Plus /></el-icon>
+          注册
+        </el-menu-item>
+        <el-dropdown v-else>
+          <span class="user-info">
+            {{ username }}<el-icon><ArrowDown /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </el-menu>
+    </header>
+    <main>
+      <router-view />
+    </main>
+    <footer>
+      <p>© 2024 电商购物网站 - 校企合作项目</p>
+    </footer>
   </div>
-  <HelloWorld msg="Vite + Vue" />
 </template>
 
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+<style>
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+
+main {
+  flex: 1;
+  padding: 20px;
 }
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
+
+.flex-grow {
+  flex-grow: 1;
+}
+
+footer {
+  text-align: center;
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  height: 60px;
+  padding: 0 15px;
 }
 </style>
