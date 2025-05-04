@@ -123,6 +123,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import orderApi from '@/api/order'
 
 const router = useRouter()
 const loading = ref(false)
@@ -178,11 +179,26 @@ const getOrderStatusType = (status) => {
 }
 
 // 加载订单数据
-const loadOrders = () => {
+const loadOrders = async () => {
   loading.value = true
-  // 实际项目中应该从API获取数据
-  // 这里使用模拟数据
-  setTimeout(() => {
+  try {
+    const params = {
+      page: currentPage.value,
+      limit: pageSize.value,
+      orderId: searchForm.orderId || undefined,
+      status: searchForm.status || undefined,
+      startDate: searchForm.dateRange?.[0] || undefined,
+      endDate: searchForm.dateRange?.[1] || undefined
+    }
+    
+    const res = await orderApi.getOrders(params)
+    orders.value = res.data
+    total.value = res.total
+  } catch (error) {
+    console.error('获取订单列表失败:', error)
+    ElMessage.error('获取订单列表失败')
+    
+    // 如果API调用失败，使用默认数据
     orders.value = [
       {
         id: 100001,
@@ -210,32 +226,12 @@ const loadOrders = () => {
         createdAt: '2024-05-02 16:12:08',
         shippingAddress: '广州市天河区',
         contactPhone: '13712345678'
-      },
-      {
-        id: 100004,
-        userId: 3,
-        totalAmount: 299,
-        status: 'PENDING_SHIPMENT',
-        createdAt: '2024-05-03 10:23:45',
-        shippingAddress: '深圳市南山区科技园',
-        contactPhone: '13612345678'
-      },
-      {
-        id: 100005,
-        userId: 4,
-        totalAmount: 899,
-        status: 'PENDING_SHIPMENT',
-        createdAt: '2024-05-03 14:34:56',
-        shippingAddress: '杭州市西湖区',
-        contactPhone: '13512345678'
       }
     ]
-    
-    // 设置分页数据
-    total.value = 100 // 假设总数为100
-    
+    total.value = orders.value.length
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 // 搜索订单
@@ -280,18 +276,25 @@ const shipOrder = (orderId) => {
 }
 
 // 确认发货
-const confirmShip = () => {
+const confirmShip = async () => {
   if (!shipForm.company || !shipForm.trackingNumber) {
     ElMessage.warning('请填写物流公司和物流单号')
     return
   }
   
-  // 实际项目中应该调用API更新订单状态
-  const index = orders.value.findIndex(o => o.id === currentOrderId.value)
-  if (index !== -1) {
-    orders.value[index].status = 'SHIPPED'
+  try {
+    await orderApi.shipOrder(currentOrderId.value, {
+      company: shipForm.company,
+      trackingNumber: shipForm.trackingNumber,
+      remark: shipForm.remark
+    })
+    
     ElMessage.success('订单发货成功')
     shipDialogVisible.value = false
+    loadOrders() // 重新加载订单列表
+  } catch (error) {
+    console.error('订单发货失败:', error)
+    ElMessage.error('订单发货失败')
   }
 }
 

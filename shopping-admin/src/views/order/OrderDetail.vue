@@ -61,7 +61,7 @@
             <template #default="scope">
               <div class="product-info">
                 <el-image 
-                  :src="scope.row.imgUrl" 
+                  :src="productImage" 
                   class="product-image" 
                   fit="cover"
                 ></el-image>
@@ -142,6 +142,10 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import orderApi from '@/api/order'
+
+// 统一使用的图片地址
+const productImage = 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp';
 
 const router = useRouter()
 const route = useRoute()
@@ -205,11 +209,25 @@ const getLogisticsCompany = (code) => {
 }
 
 // 加载订单数据
-const loadOrderDetail = () => {
+const loadOrderDetail = async () => {
   loading.value = true
-  // 实际项目中应该从API获取数据
-  // 这里使用模拟数据
-  setTimeout(() => {
+  try {
+    const res = await orderApi.getOrder(orderId.value)
+    
+    // 处理商品图片，替换为统一图片
+    if (res.data.items && res.data.items.length) {
+      res.data.items = res.data.items.map(item => ({
+        ...item,
+        imgUrl: productImage
+      }))
+    }
+    
+    order.value = res.data
+  } catch (error) {
+    console.error('获取订单详情失败:', error)
+    ElMessage.error('获取订单详情失败')
+    
+    // 如果API调用失败，使用默认数据
     if (orderId.value === 100004) {
       // 待发货订单
       order.value = {
@@ -227,7 +245,7 @@ const loadOrderDetail = () => {
             name: '商品1', 
             price: 299, 
             quantity: 1, 
-            imgUrl: 'https://via.placeholder.com/100x100?text=Product+1' 
+            imgUrl: productImage
           }
         ]
       }
@@ -253,7 +271,7 @@ const loadOrderDetail = () => {
             name: '商品2', 
             price: 599, 
             quantity: 1, 
-            imgUrl: 'https://via.placeholder.com/100x100?text=Product+2' 
+            imgUrl: productImage
           }
         ]
       }
@@ -279,20 +297,20 @@ const loadOrderDetail = () => {
             name: '商品1', 
             price: 299, 
             quantity: 2, 
-            imgUrl: 'https://via.placeholder.com/100x100?text=Product+1' 
+            imgUrl: productImage
           },
           { 
             name: '商品3', 
             price: 99, 
             quantity: 1, 
-            imgUrl: 'https://via.placeholder.com/100x100?text=Product+3' 
+            imgUrl: productImage
           }
         ]
       }
     }
-    
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 // 返回订单列表
@@ -309,22 +327,33 @@ const shipOrder = () => {
 }
 
 // 确认发货
-const confirmShip = () => {
+const confirmShip = async () => {
   if (!shipForm.company || !shipForm.trackingNumber) {
     ElMessage.warning('请填写物流公司和物流单号')
     return
   }
   
-  // 实际项目中应该调用API更新订单状态
-  order.value.status = 'SHIPPED'
-  order.value.logistics = {
-    company: shipForm.company,
-    trackingNumber: shipForm.trackingNumber,
-    shippedAt: new Date().toISOString().replace('T', ' ').substring(0, 19)
+  try {
+    await orderApi.shipOrder(orderId.value, {
+      company: shipForm.company,
+      trackingNumber: shipForm.trackingNumber,
+      remark: shipForm.remark
+    })
+    
+    // 更新订单状态
+    order.value.status = 'SHIPPED'
+    order.value.logistics = {
+      company: shipForm.company,
+      trackingNumber: shipForm.trackingNumber,
+      shippedAt: new Date().toISOString().replace('T', ' ').substring(0, 19)
+    }
+    
+    ElMessage.success('订单发货成功')
+    shipDialogVisible.value = false
+  } catch (error) {
+    console.error('订单发货失败:', error)
+    ElMessage.error('订单发货失败')
   }
-  
-  ElMessage.success('订单发货成功')
-  shipDialogVisible.value = false
 }
 
 onMounted(() => {

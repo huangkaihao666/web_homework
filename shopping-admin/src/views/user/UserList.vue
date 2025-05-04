@@ -37,7 +37,7 @@
         
         <el-table-column label="头像" width="100">
           <template #default="scope">
-            <el-avatar :size="40" :src="scope.row.avatar">
+            <el-avatar :size="40" :src="userAvatar">
               <el-icon><User /></el-icon>
             </el-avatar>
           </template>
@@ -140,6 +140,10 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { User } from '@element-plus/icons-vue'
+import userApi from '@/api/user'
+
+// 统一使用的图片地址
+const userAvatar = 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp';
 
 const router = useRouter()
 const loading = ref(false)
@@ -182,19 +186,40 @@ const getOrderStatusType = (status) => {
 }
 
 // 加载用户数据
-const loadUsers = () => {
+const loadUsers = async () => {
   loading.value = true
   
-  // 实际项目中应该从API获取数据
-  // 这里使用模拟数据
-  setTimeout(() => {
+  try {
+    const params = {
+      page: currentPage.value,
+      limit: pageSize.value,
+      userId: searchForm.userId || undefined,
+      username: searchForm.username || undefined,
+      startDate: searchForm.dateRange?.[0] || undefined,
+      endDate: searchForm.dateRange?.[1] || undefined
+    }
+    
+    const res = await userApi.getUsers(params)
+    
+    // 替换所有用户头像为统一图片
+    tableData.value = res.data.map(user => ({
+      ...user,
+      avatar: userAvatar
+    }))
+    
+    total.value = res.total
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+    ElMessage.error('获取用户列表失败')
+    
+    // 如果API调用失败，使用默认数据
     const mockData = [
       {
         id: 1,
         username: 'user001',
         email: 'user001@example.com',
         phone: '13800138001',
-        avatar: 'https://via.placeholder.com/100',
+        avatar: userAvatar,
         registerTime: '2024-01-01 10:00:00',
         lastLoginTime: '2024-05-03 15:20:30',
         status: 'active'
@@ -204,7 +229,7 @@ const loadUsers = () => {
         username: 'user002',
         email: 'user002@example.com',
         phone: '13800138002',
-        avatar: 'https://via.placeholder.com/100',
+        avatar: userAvatar,
         registerTime: '2024-01-05 14:30:20',
         lastLoginTime: '2024-05-02 09:15:40',
         status: 'active'
@@ -214,30 +239,10 @@ const loadUsers = () => {
         username: 'user003',
         email: 'user003@example.com',
         phone: '13800138003',
-        avatar: 'https://via.placeholder.com/100',
+        avatar: userAvatar,
         registerTime: '2024-02-10 09:40:15',
         lastLoginTime: '2024-05-01 14:25:10',
         status: 'inactive'
-      },
-      {
-        id: 4,
-        username: 'user004',
-        email: 'user004@example.com',
-        phone: '13800138004',
-        avatar: 'https://via.placeholder.com/100',
-        registerTime: '2024-03-15 16:20:30',
-        lastLoginTime: '2024-04-30 11:10:45',
-        status: 'active'
-      },
-      {
-        id: 5,
-        username: 'user005',
-        email: 'user005@example.com',
-        phone: '13800138005',
-        avatar: 'https://via.placeholder.com/100',
-        registerTime: '2024-04-01 11:30:00',
-        lastLoginTime: '2024-04-29 16:40:20',
-        status: 'active'
       }
     ]
     
@@ -266,15 +271,11 @@ const loadUsers = () => {
       })
     }
     
+    tableData.value = filteredData
     total.value = filteredData.length
-    
-    // 模拟分页
-    const start = (currentPage.value - 1) * pageSize.value
-    const end = start + pageSize.value
-    tableData.value = filteredData.slice(start, end)
-    
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 // 查询用户
@@ -304,12 +305,27 @@ const handleSizeChange = (val) => {
 }
 
 // 查看用户详情
-const viewUser = (user) => {
+const viewUser = async (user) => {
   loading.value = true
   
-  // 实际项目中应该从API获取用户详情数据
-  // 这里使用模拟数据
-  setTimeout(() => {
+  try {
+    // 获取用户详情
+    const userDetail = await userApi.getUser(user.id)
+    currentUser.value = { 
+      ...userDetail.data,
+      avatar: userAvatar
+    }
+    
+    // 获取用户订单
+    const orderRes = await userApi.getUserOrders(user.id)
+    currentUser.value.orders = orderRes.data
+    
+    userDialogVisible.value = true
+  } catch (error) {
+    console.error('获取用户详情失败:', error)
+    ElMessage.error('获取用户详情失败')
+    
+    // 如果API调用失败，使用默认数据
     currentUser.value = { ...user }
     
     // 添加订单数据
@@ -335,8 +351,9 @@ const viewUser = (user) => {
     ]
     
     userDialogVisible.value = true
+  } finally {
     loading.value = false
-  }, 300)
+  }
 }
 
 // 查看订单详情
@@ -346,25 +363,33 @@ const viewOrder = (orderId) => {
 }
 
 // 切换用户状态
-const toggleUserStatus = (user) => {
+const toggleUserStatus = async (user) => {
   const newStatus = user.status === 'active' ? 'inactive' : 'active'
   const actionText = newStatus === 'active' ? '启用' : '禁用'
   
-  ElMessageBox.confirm(
-    `确定要${actionText}用户 ${user.username} 吗？`,
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
-    // 实际项目中应该调用API更新用户状态
+  try {
+    await ElMessageBox.confirm(
+      `确定要${actionText}用户 ${user.username} 吗？`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    // 调用API更新用户状态
+    await userApi.updateUserStatus(user.id, newStatus)
+    
+    // 更新本地状态
     user.status = newStatus
     ElMessage.success(`已${actionText}用户 ${user.username}`)
-  }).catch(() => {
-    // 取消操作
-  })
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('更新用户状态失败:', error)
+      ElMessage.error('更新用户状态失败')
+    }
+  }
 }
 
 onMounted(() => {

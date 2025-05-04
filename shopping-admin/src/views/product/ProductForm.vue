@@ -80,6 +80,11 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import productApi from '@/api/product'
+import categoryApi from '@/api/category'
+
+// 统一使用的图片地址
+const DEFAULT_IMAGE = 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp';
 
 const router = useRouter()
 const route = useRoute()
@@ -132,34 +137,55 @@ const rules = {
 }
 
 // 加载分类数据
-const loadCategories = () => {
-  // 实际项目中应该从API获取数据
-  categories.value = [
-    { id: 1, name: '电子产品' },
-    { id: 2, name: '手机' },
-    { id: 3, name: '服装' },
-    { id: 4, name: '食品' },
-    { id: 5, name: '礼品' },
-    { id: 6, name: '运动' }
-  ]
+const loadCategories = async () => {
+  try {
+    const res = await categoryApi.getCategories()
+    categories.value = res.data
+  } catch (error) {
+    console.error('获取分类列表失败:', error)
+    ElMessage.error('获取分类列表失败')
+    
+    // 如果API调用失败，使用默认数据
+    categories.value = [
+      { id: 1, name: '电子产品' },
+      { id: 2, name: '手机' },
+      { id: 3, name: '服装' },
+      { id: 4, name: '食品' },
+      { id: 5, name: '礼品' },
+      { id: 6, name: '运动' }
+    ]
+  }
 }
 
 // 加载商品数据(如果是编辑模式)
-const loadProductData = () => {
+const loadProductData = async () => {
   if (!isEdit.value) return
   
   loading.value = true
-  // 实际项目中应该从API获取数据
-  // 这里使用模拟数据
-  setTimeout(() => {
-    // 模拟API返回的商品数据
+  try {
+    const res = await productApi.getProduct(productId.value)
+    
+    // 更新表单数据
+    Object.keys(form).forEach(key => {
+      if (key in res.data) {
+        form[key] = res.data[key]
+      }
+    })
+    
+    // 替换图片URL
+    form.imgUrl = DEFAULT_IMAGE
+  } catch (error) {
+    console.error('获取商品详情失败:', error)
+    ElMessage.error('获取商品详情失败')
+    
+    // 如果API调用失败，使用模拟数据
     const productData = {
       id: productId.value,
       name: `商品${productId.value}`,
       categoryId: (productId.value % 6) + 1,
       price: 299 + productId.value * 100,
       stock: 100,
-      imgUrl: `https://via.placeholder.com/200x200?text=Product+${productId.value}`,
+      imgUrl: DEFAULT_IMAGE,
       status: 1,
       description: '这是一段商品详情描述。这款商品具有很多优点，例如质量好、价格实惠等。'
     }
@@ -170,9 +196,9 @@ const loadProductData = () => {
         form[key] = productData[key]
       }
     })
-    
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 // 上传图片前的检查
@@ -194,18 +220,22 @@ const beforeUpload = (file) => {
 }
 
 // 上传图片
-const uploadImage = (options) => {
-  // 实际项目中应该调用API上传图片
-  // 这里使用模拟数据
-  setTimeout(() => {
-    // 使用FileReader预览图片
-    const reader = new FileReader()
-    reader.readAsDataURL(options.file)
-    reader.onload = () => {
-      form.imgUrl = reader.result
-      options.onSuccess()
-    }
-  }, 500)
+const uploadImage = async (options) => {
+  try {
+    // 实际项目中应该调用API上传图片
+    // const formData = new FormData()
+    // formData.append('file', options.file)
+    // const res = await productApi.uploadImage(formData)
+    // form.imgUrl = res.url
+    
+    // 这里直接使用指定图片
+    form.imgUrl = DEFAULT_IMAGE
+    options.onSuccess()
+  } catch (error) {
+    console.error('上传图片失败:', error)
+    ElMessage.error('上传图片失败')
+    options.onError()
+  }
 }
 
 // 图片上传成功
@@ -214,23 +244,32 @@ const handleImageSuccess = () => {
 }
 
 // 提交表单
-const submitForm = () => {
+const submitForm = async () => {
   if (!formRef.value) return
   
-  formRef.value.validate((valid) => {
-    if (valid) {
-      loading.value = true
-      // 实际项目中应该调用API保存数据
-      setTimeout(() => {
-        const successMsg = isEdit.value ? '商品编辑成功' : '商品添加成功'
-        ElMessage.success(successMsg)
-        loading.value = false
-        router.push('/products')
-      }, 1000)
+  try {
+    await formRef.value.validate()
+    
+    loading.value = true
+    if (isEdit.value) {
+      // 编辑商品
+      await productApi.updateProduct(productId.value, form)
+      ElMessage.success('商品编辑成功')
     } else {
-      return false
+      // 添加商品
+      await productApi.createProduct(form)
+      ElMessage.success('商品添加成功')
     }
-  })
+    
+    router.push('/products')
+  } catch (error) {
+    if (error !== false) {
+      console.error('保存商品失败:', error)
+      ElMessage.error('保存商品失败')
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
 // 重置表单
