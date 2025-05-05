@@ -7,6 +7,7 @@ import { OrdersModule } from './orders/orders.module';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ProxyModule } from './proxy/proxy.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ProxyModule } from './proxy/proxy.module';
     AuthModule,
     CategoriesModule,
     ProxyModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

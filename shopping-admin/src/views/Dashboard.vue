@@ -84,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ShoppingCart,
@@ -92,25 +92,35 @@ import {
   Goods,
   Money
 } from '@element-plus/icons-vue'
+import * as echarts from 'echarts'
+import OrderAPI from '@/api/order'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const salesChartRef = ref(null)
+const categoryChartRef = ref(null)
+let salesChart = null
+let categoryChart = null
 
 // 统计数据
 const statisticsData = ref([
-  { title: '订单总数', value: 5298, icon: 'ShoppingCart', color: '#409eff' },
-  { title: '用户总数', value: 3720, icon: 'User', color: '#67c23a' },
-  { title: '商品总数', value: 1862, icon: 'Goods', color: '#e6a23c' },
-  { title: '销售总额', value: '¥296,253', icon: 'Money', color: '#f56c6c' }
+  { title: '订单总数', value: 0, icon: 'ShoppingCart', color: '#409eff' },
+  { title: '用户总数', value: 0, icon: 'User', color: '#67c23a' },
+  { title: '商品总数', value: 0, icon: 'Goods', color: '#e6a23c' },
+  { title: '销售总额', value: '¥0', icon: 'Money', color: '#f56c6c' }
 ])
 
 // 最近订单
-const recentOrders = ref([
-  { id: 100001, user: '张三', amount: 198.50, date: '2024-05-01 14:23:12', status: '已完成' },
-  { id: 100002, user: '李四', amount: 598.00, date: '2024-05-02 09:45:30', status: '已发货' },
-  { id: 100003, user: '王五', amount: 1299.00, date: '2024-05-02 16:12:08', status: '待付款' },
-  { id: 100004, user: '赵六', amount: 399.00, date: '2024-05-03 11:24:56', status: '已付款' },
-  { id: 100005, user: '钱七', amount: 799.50, date: '2024-05-03 18:35:42', status: '已完成' }
-])
+const recentOrders = ref([])
+
+// 最近7天销售额数据
+const salesData = ref({
+  dates: [],
+  values: []
+})
+
+// 商品类别分布数据
+const categoryData = ref([])
 
 const getOrderStatusType = (status) => {
   const statusMap = {
@@ -131,35 +141,234 @@ const viewOrderDetail = (orderId) => {
   router.push(`/orders/${orderId}`)
 }
 
-onMounted(() => {
-  // 这里可以通过API获取真实的数据
-  console.log('Dashboard组件已挂载，可以调用API获取数据')
-  
-  // 实际项目中，这里应该引入图表库（如ECharts）来绘制图表
-  // 下面是示例代码，需要引入相应的库才能工作
-  /*
-  const salesChart = echarts.init(salesChartRef.value);
-  salesChart.setOption({
-    xAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
-    yAxis: { type: 'value' },
-    series: [{ data: [150, 230, 224, 218, 135, 147, 260], type: 'line' }]
-  });
-  
-  const categoryChart = echarts.init(categoryChartRef.value);
-  categoryChart.setOption({
-    series: [{
-      type: 'pie',
-      radius: '70%',
-      data: [
-        { value: 335, name: '电子产品' },
-        { value: 310, name: '服装' },
-        { value: 234, name: '食品' },
-        { value: 135, name: '书籍' },
-        { value: 1548, name: '其他' }
+// 初始化销售额折线图
+const initSalesChart = () => {
+  if (salesChartRef.value) {
+    salesChart = echarts.init(salesChartRef.value)
+    
+    const option = {
+      tooltip: {
+        trigger: 'axis',
+        formatter: '{b}<br/>销售额: ¥{c}'
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: salesData.value.dates
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: '¥{value}'
+        }
+      },
+      series: [
+        {
+          name: '销售额',
+          type: 'line',
+          smooth: true,
+          data: salesData.value.values,
+          itemStyle: {
+            color: '#409eff'
+          },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(64, 158, 255, 0.7)' },
+              { offset: 1, color: 'rgba(64, 158, 255, 0.1)' }
+            ])
+          }
+        }
       ]
-    }]
-  });
-  */
+    }
+    
+    salesChart.setOption(option)
+    
+    // 响应窗口大小变化
+    window.addEventListener('resize', () => {
+      salesChart && salesChart.resize()
+    })
+  }
+}
+
+// 初始化商品类别分布饼图
+const initCategoryChart = () => {
+  if (categoryChartRef.value) {
+    categoryChart = echarts.init(categoryChartRef.value)
+    
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: {c} ({d}%)'
+      },
+      legend: {
+        orient: 'vertical',
+        right: 10,
+        top: 'center',
+        data: categoryData.value.map(item => item.name)
+      },
+      series: [
+        {
+          name: '商品类别',
+          type: 'pie',
+          radius: ['40%', '70%'],
+          avoidLabelOverlap: false,
+          itemStyle: {
+            borderRadius: 10,
+            borderColor: '#fff',
+            borderWidth: 2
+          },
+          label: {
+            show: false,
+            position: 'center'
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 16,
+              fontWeight: 'bold'
+            }
+          },
+          labelLine: {
+            show: false
+          },
+          data: categoryData.value
+        }
+      ]
+    }
+    
+    categoryChart.setOption(option)
+    
+    // 响应窗口大小变化
+    window.addEventListener('resize', () => {
+      categoryChart && categoryChart.resize()
+    })
+  }
+}
+
+// 获取仪表盘数据
+const fetchDashboardData = async () => {
+  try {
+    // 获取统计数据
+    const statsRes = await OrderAPI.getDashboardStats()
+    console.log('statsRes', statsRes)
+    if (statsRes) {
+      statisticsData.value[0].value = statsRes.totalOrders || 0
+      statisticsData.value[1].value = statsRes.totalUsers || 0
+      statisticsData.value[2].value = statsRes.totalProducts || 0
+      statisticsData.value[3].value = `¥${(statsRes.totalSales || 0).toLocaleString()}`
+    }
+    
+    // 获取最近7天销售数据
+    const salesRes = await OrderAPI.getRecentSales()
+    console.log('salesRes', salesRes)
+    if (salesRes) {
+      salesData.value.dates = salesRes.map(item => item.date)
+      salesData.value.values = salesRes.map(item => item.amount)
+      
+      // 更新图表
+      if (salesChart) {
+        salesChart.setOption({
+          xAxis: { data: salesData.value.dates },
+          series: [{ data: salesData.value.values }]
+        })
+      }
+    }
+    
+    // 获取商品类别分布
+    const categoryRes = await OrderAPI.getCategoryDistribution()
+    if (categoryRes) {
+      categoryData.value = categoryRes
+      
+      // 更新图表
+      if (categoryChart) {
+        categoryChart.setOption({
+          legend: { data: categoryData.value.map(item => item.name) },
+          series: [{ data: categoryData.value }]
+        })
+      }
+    }
+    
+    // 获取最近订单
+    const ordersRes = await OrderAPI.getRecentOrders()
+    if (ordersRes) {
+      recentOrders.value = ordersRes
+    }
+  } catch (error) {
+    console.error('获取仪表盘数据失败', error)
+    ElMessage.error('获取数据失败，请稍后重试')
+    
+    // 使用模拟数据
+    useMockData()
+  }
+}
+
+// 使用模拟数据
+const useMockData = () => {
+  // 统计数据
+  statisticsData.value = [
+    { title: '订单总数', value: 5298, icon: 'ShoppingCart', color: '#409eff' },
+    { title: '用户总数', value: 3720, icon: 'User', color: '#67c23a' },
+    { title: '商品总数', value: 1862, icon: 'Goods', color: '#e6a23c' },
+    { title: '销售总额', value: '¥296,253', icon: 'Money', color: '#f56c6c' }
+  ]
+  
+  // 最近订单
+  recentOrders.value = [
+    { id: 100001, user: '张三', amount: 198.50, date: '2024-05-01 14:23:12', status: '已完成' },
+    { id: 100002, user: '李四', amount: 598.00, date: '2024-05-02 09:45:30', status: '已发货' },
+    { id: 100003, user: '王五', amount: 1299.00, date: '2024-05-02 16:12:08', status: '待付款' },
+    { id: 100004, user: '赵六', amount: 399.00, date: '2024-05-03 11:24:56', status: '已付款' },
+    { id: 100005, user: '钱七', amount: 799.50, date: '2024-05-03 18:35:42', status: '已完成' }
+  ]
+  
+  // 最近7天销售额数据
+  salesData.value = {
+    dates: ['5月1日', '5月2日', '5月3日', '5月4日', '5月5日', '5月6日', '5月7日'],
+    values: [3500, 4200, 3800, 5100, 4600, 5800, 6200]
+  }
+  
+  // 商品类别分布数据
+  categoryData.value = [
+    { value: 335, name: '电子产品' },
+    { value: 310, name: '服装' },
+    { value: 234, name: '食品' },
+    { value: 135, name: '书籍' },
+    { value: 248, name: '其他' }
+  ]
+}
+
+onMounted(async () => {
+  // 初始化图表
+  initSalesChart()
+  initCategoryChart()
+  
+  // 获取数据
+  await fetchDashboardData()
+})
+
+onUnmounted(() => {
+  // 销毁图表实例，避免内存泄漏
+  if (salesChart) {
+    salesChart.dispose()
+    salesChart = null
+  }
+  
+  if (categoryChart) {
+    categoryChart.dispose()
+    categoryChart = null
+  }
+  
+  // 移除事件监听
+  window.removeEventListener('resize', () => {
+    salesChart && salesChart.resize()
+    categoryChart && categoryChart.resize()
+  })
 })
 </script>
 
