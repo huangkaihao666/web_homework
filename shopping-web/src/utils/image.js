@@ -1,17 +1,27 @@
 /**
- * 获取通过代理服务访问的图片URL
- * @param {string} url - 原始图片URL
- * @returns {string} 代理后的图片URL
+ * 图片工具函数
  */
-export const getProxyImageUrl = (url) => {
-  if (!url) return '';
-  return `http://localhost:3000/api/proxy/image?url=${encodeURIComponent(url)}`;
-};
+
+// 默认商品图片
+export const DEFAULT_PRODUCT_IMAGE = 'https://via.placeholder.com/300x300?text=Product'
 
 /**
- * 默认商品图片URL
+ * 获取可用的图片URL
+ * 对于外部图片可能需要通过代理服务器访问，避免跨域问题
+ * @param {string} url - 原始图片URL
+ * @returns {string} 处理后的图片URL
  */
-export const DEFAULT_PRODUCT_IMAGE = 'https://gd-hbimg.huaban.com/1dfba91dd19657eb9d088e1be15e7319a46d5d6b8e0af-0vC9Ym_fw480webp';
+export const getProxyImageUrl = (url) => {
+  if (!url) return DEFAULT_PRODUCT_IMAGE;
+  
+  // 检查是否为本地资源
+  if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) {
+    return url;
+  }
+  
+  // 使用代理服务访问外部图片URL，避免跨域问题
+  return `http://localhost:3000/api/proxy/image?url=${encodeURIComponent(url)}`;
+};
 
 /**
  * 默认用户头像URL

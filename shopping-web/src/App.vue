@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { House, ShoppingCart, List, User, Plus, ArrowDown, Star, InfoFilled, QuestionFilled, Collection, StarFilled } from '@element-plus/icons-vue'
+import { House, ShoppingCart, List, User, Plus, ArrowDown, Star, InfoFilled, QuestionFilled, Collection, StarFilled, Grid } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
@@ -51,6 +51,10 @@ onMounted(() => {
           <el-menu-item index="/">
             <el-icon><House /></el-icon>
             首页
+          </el-menu-item>
+          <el-menu-item index="/category">
+            <el-icon><Grid /></el-icon>
+            商品分类
           </el-menu-item>
           <el-menu-item index="/cart">
             <el-icon><ShoppingCart /></el-icon>

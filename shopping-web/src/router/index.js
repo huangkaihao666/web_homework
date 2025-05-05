@@ -85,6 +85,18 @@ const routes = [
     meta: { requiresAuth: false } // 临时设置为false以便测试
   },
   {
+    path: '/category',
+    name: 'Category',
+    component: () => import('@/views/Category.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/category/:id',
+    name: 'CategoryDetail',
+    component: () => import('@/views/Category.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFound.vue')
