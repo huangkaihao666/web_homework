@@ -120,11 +120,13 @@ const logout = () => {
 
 <style scoped>
 .admin-layout {
-  height: 100%;
+  height: 100vh;
+  width: 100%;
 }
 
 .layout-container {
   height: 100%;
+  width: 100%;
 }
 
 .sidebar {
@@ -185,5 +187,6 @@ const logout = () => {
   background-color: #f0f2f5;
   height: calc(100vh - 60px);
   overflow-y: auto;
+  width: 100%;
 }
 </style> 

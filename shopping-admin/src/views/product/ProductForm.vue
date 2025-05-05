@@ -140,7 +140,7 @@ const rules = {
 const loadCategories = async () => {
   try {
     const res = await categoryApi.getCategories()
-    categories.value = res.data
+    categories.value = res
   } catch (error) {
     console.error('获取分类列表失败:', error)
     ElMessage.error('获取分类列表失败')

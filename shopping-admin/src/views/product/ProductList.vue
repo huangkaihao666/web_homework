@@ -55,8 +55,8 @@
         <el-table-column label="商品图片" width="100">
           <template #default="scope">
             <el-image 
-              :src="productImage" 
-              :preview-src-list="[productImage]"
+              :src="scope.row.imgUrl || productImage" 
+              :preview-src-list="[scope.row.imgUrl || productImage]"
               fit="cover"
               style="width: 60px; height: 60px;"
             ></el-image>
@@ -240,13 +240,14 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import productApi from '@/api/product'
 import categoryApi from '@/api/category'
 
 // 统一使用的图片地址
-const productImage = 'https://gd-hbimg.huaban.com/1dfba91dd19657eb9d088e1be15e7319a46d5d6b8e0af-0vC9Ym_fw480webp';
+const productImage = 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
 
 // 基础数据
 const loading = ref(false)
@@ -272,7 +273,7 @@ const productForm = reactive({
   id: null,
   name: '',
   categoryId: '',
-  image: '',
+  imgUrl: '',
   price: 0,
   stock: 0,
   description: '',
@@ -300,19 +301,22 @@ const productRules = {
 const loadCategories = async () => {
   try {
     const res = await categoryApi.getCategories()
-    categoryOptions.value = res.data
-  } catch (error) {
-    console.error('获取分类列表失败:', error)
-    ElMessage.error('获取分类列表失败')
+    // 打印一下获取到的分类数据，查看格式
+    console.log('获取的分类数据:', res)
     
-    // 如果API调用失败，使用默认数据
-    categoryOptions.value = [
-      { id: 1, name: '手机数码' },
-      { id: 2, name: '电脑办公' },
-      { id: 3, name: '家用电器' },
-      { id: 4, name: '服装鞋包' },
-      { id: 5, name: '食品生鲜' }
-    ]
+    // 判断数据格式，确保正确赋值
+    if (Array.isArray(res)) {
+      categoryOptions.value = res
+    } else if (res && Array.isArray(res.data)) {
+      categoryOptions.value = res.data
+    } else {
+      categoryOptions.value = []
+    }
+    
+    console.log('处理后的分类数据:', categoryOptions.value)
+  } catch (error) {
+    console.error('获取分类数据失败:', error)
+    categoryOptions.value = []
   }
 }
 
@@ -332,105 +336,9 @@ const loadProducts = async () => {
     
     const res = await productApi.getProducts(params)
     
-    // 替换所有产品图片为统一图片
-    tableData.value = res.data.map(product => ({
-      ...product,
-      image: productImage
-    }))
-    
-    total.value = res.total
-  } catch (error) {
-    console.error('获取商品列表失败:', error)
-    ElMessage.error('获取商品列表失败')
-    
-    // 如果API调用失败，使用默认数据
-    const mockData = [
-      {
-        id: 1,
-        name: '高端智能手机',
-        categoryId: 1,
-        categoryName: '手机数码',
-        image: productImage,
-        price: 4999,
-        stock: 100,
-        sales: 50,
-        status: 'ACTIVE'
-      },
-      {
-        id: 2,
-        name: '超薄笔记本电脑',
-        categoryId: 2,
-        categoryName: '电脑办公',
-        image: productImage,
-        price: 6999,
-        stock: 80,
-        sales: 30,
-        status: 'ACTIVE'
-      },
-      {
-        id: 3,
-        name: '智能家用空调',
-        categoryId: 3,
-        categoryName: '家用电器',
-        image: productImage,
-        price: 3299,
-        stock: 50,
-        sales: 20,
-        status: 'ACTIVE'
-      },
-      {
-        id: 4,
-        name: '时尚休闲男装',
-        categoryId: 4,
-        categoryName: '服装鞋包',
-        image: productImage,
-        price: 299,
-        stock: 200,
-        sales: 100,
-        status: 'ACTIVE'
-      },
-      {
-        id: 5,
-        name: '有机新鲜水果',
-        categoryId: 5,
-        categoryName: '食品生鲜',
-        image: productImage,
-        price: 99,
-        stock: 5,
-        sales: 80,
-        status: 'ACTIVE'
-      }
-    ]
-    
-    // 模拟筛选逻辑
-    let filteredData = [...mockData]
-    
-    if (searchForm.name) {
-      filteredData = filteredData.filter(item => 
-        item.name.toLowerCase().includes(searchForm.name.toLowerCase())
-      )
-    }
-    
-    if (searchForm.categoryId) {
-      filteredData = filteredData.filter(item => 
-        item.categoryId === searchForm.categoryId
-      )
-    }
-    
-    if (searchForm.minPrice) {
-      filteredData = filteredData.filter(item => 
-        item.price >= searchForm.minPrice
-      )
-    }
-    
-    if (searchForm.maxPrice) {
-      filteredData = filteredData.filter(item => 
-        item.price <= searchForm.maxPrice
-      )
-    }
-    
-    tableData.value = filteredData
-    total.value = filteredData.length
+    // 直接使用API返回的数据
+    tableData.value = res
+    total.value = res.length
   } finally {
     loading.value = false
   }
@@ -460,11 +368,17 @@ const handleCurrentChange = (val) => {
 // 切换每页显示数量
 const handleSizeChange = (val) => {
   pageSize.value = val
+  currentPage.value = 1
   loadProducts()
 }
 
 // 添加商品
 const handleAddProduct = () => {
+  // 确保分类数据已加载
+  if (categoryOptions.value.length === 0) {
+    loadCategories();
+  }
+
   isEditMode.value = false
   
   // 重置表单
@@ -472,7 +386,7 @@ const handleAddProduct = () => {
     id: null,
     name: '',
     categoryId: '',
-    image: productImage,
+    imgUrl: productImage, // 使用正确的字段名
     price: 0,
     stock: 0,
     description: '',
@@ -493,39 +407,13 @@ const handleEditProduct = async (product) => {
     // 加载商品详情
     const productDetail = await productApi.getProduct(product.id)
     
-    Object.assign(productForm, {
-      id: productDetail.data.id,
-      name: productDetail.data.name,
-      categoryId: productDetail.data.categoryId,
-      image: productImage, // 使用统一的图片
-      price: productDetail.data.price,
-      stock: productDetail.data.stock,
-      description: productDetail.data.description,
-      specifications: productDetail.data.specifications || [],
-      status: productDetail.data.status
-    })
+    // 直接使用返回的数据
+    Object.assign(productForm, productDetail)
     
     productDialogVisible.value = true
   } catch (error) {
-    console.error('获取商品详情失败:', error)
-    ElMessage.error('获取商品详情失败')
-    
     // 如果API调用失败，使用表格中的数据
-    Object.assign(productForm, {
-      id: product.id,
-      name: product.name,
-      categoryId: product.categoryId,
-      image: productImage,
-      price: product.price,
-      stock: product.stock,
-      description: product.description || '商品详细描述',
-      specifications: [
-        { name: '品牌', value: '某品牌' },
-        { name: '型号', value: 'ABC-123' }
-      ],
-      status: product.status
-    })
-    
+    Object.assign(productForm, product)
     productDialogVisible.value = true
   } finally {
     loading.value = false
@@ -545,18 +433,13 @@ const submitProductForm = async () => {
       if (isEditMode.value) {
         // 更新商品
         await productApi.updateProduct(formData.id, formData)
-        ElMessage.success('商品更新成功')
       } else {
         // 创建商品
         await productApi.createProduct(formData)
-        ElMessage.success('商品添加成功')
       }
       
       productDialogVisible.value = false
       loadProducts() // 重新加载商品列表
-    } catch (error) {
-      console.error('保存商品失败:', error)
-      ElMessage.error('保存商品失败')
     } finally {
       loading.value = false
     }
@@ -580,7 +463,7 @@ const beforeUpload = (file) => {
   
   // 这里应该上传图片到服务器，获取返回的URL
   // 但现在我们只使用统一的图片URL
-  productForm.image = productImage
+  productForm.imgUrl = productImage
   return false // 阻止自动上传
 }
 
@@ -597,11 +480,10 @@ const removeSpec = (index) => {
 // 切换商品状态
 const handleToggleStatus = async (product) => {
   const newStatus = product.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
-  const actionText = newStatus === 'ACTIVE' ? '上架' : '下架'
   
   try {
     await ElMessageBox.confirm(
-      `确定要${actionText}商品 "${product.name}" 吗？`,
+      `确定要${newStatus === 'ACTIVE' ? '上架' : '下架'}商品 "${product.name}" 吗？`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -615,12 +497,11 @@ const handleToggleStatus = async (product) => {
     
     // 更新本地状态
     product.status = newStatus
-    ElMessage.success(`已${actionText}商品 "${product.name}"`)
+    
+    // 重新加载商品列表
+    loadProducts()
   } catch (error) {
-    if (error !== 'cancel') {
-      console.error('更新商品状态失败:', error)
-      ElMessage.error('更新商品状态失败')
-    }
+    // 用户取消操作，不做处理
   }
 }
 
@@ -640,25 +521,28 @@ const handleDeleteProduct = async (product) => {
     // 调用API删除商品
     await productApi.deleteProduct(product.id)
     
-    ElMessage.success(`已删除商品 "${product.name}"`)
-    loadProducts() // 重新加载商品列表
+    // 重新加载商品列表
+    loadProducts()
   } catch (error) {
-    if (error !== 'cancel') {
-      console.error('删除商品失败:', error)
-      ElMessage.error('删除商品失败')
-    }
+    // 用户取消操作，不做处理
   }
 }
 
 onMounted(() => {
-  loadCategories()
-  loadProducts()
+  // 先加载分类数据
+  loadCategories().then(() => {
+    // 然后加载商品数据
+    loadProducts()
+  })
 })
 </script>
 
 <style scoped>
 .product-list-container {
   padding: 20px;
+  min-height: calc(100vh - 100px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .page-header {
@@ -675,10 +559,12 @@ onMounted(() => {
 
 .search-area {
   margin-bottom: 20px;
+  width: 100%;
 }
 
 .table-area {
   margin-bottom: 20px;
+  width: 100%;
 }
 
 .pagination-container {
