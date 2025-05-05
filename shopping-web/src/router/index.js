@@ -79,6 +79,12 @@ const routes = [
     component: () => import('@/views/HelpCenter.vue')
   },
   {
+    path: '/favorites',
+    name: 'Favorites',
+    component: () => import('@/views/Favorites.vue'),
+    meta: { requiresAuth: false } // 临时设置为false以便测试
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFound.vue')
