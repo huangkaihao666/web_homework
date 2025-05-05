@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { House, ShoppingCart, List, User, Plus, ArrowDown } from '@element-plus/icons-vue'
+import { House, ShoppingCart, List, User, Plus, ArrowDown, Star, InfoFilled, QuestionFilled, Collection } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
@@ -60,6 +60,18 @@ onMounted(() => {
             <el-icon><List /></el-icon>
             我的订单
           </el-menu-item>
+          <el-menu-item index="/activity-center">
+            <el-icon><Star /></el-icon>
+            活动中心
+          </el-menu-item>
+          <el-menu-item index="/community">
+            <el-icon><Collection /></el-icon>
+            社区
+          </el-menu-item>
+          <el-menu-item index="/help-center">
+            <el-icon><QuestionFilled /></el-icon>
+            帮助中心
+          </el-menu-item>
           <div class="flex-grow"></div>
           <el-menu-item index="/login" v-if="!isLoggedIn">
             <el-icon><User /></el-icon>
@@ -75,6 +87,7 @@ onMounted(() => {
             </span>
             <template #dropdown>
               <el-dropdown-menu>
+                <el-dropdown-item @click="router.push('/member-center')">会员中心</el-dropdown-item>
                 <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>

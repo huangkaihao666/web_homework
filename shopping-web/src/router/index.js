@@ -58,6 +58,27 @@ const routes = [
     component: () => import('@/views/Register.vue')
   },
   {
+    path: '/member-center',
+    name: 'MemberCenter',
+    component: () => import('@/views/MemberCenter.vue'),
+    meta: { requiresAuth: false } // 临时设置为false以便测试
+  },
+  {
+    path: '/activity-center',
+    name: 'ActivityCenter',
+    component: () => import('@/views/ActivityCenter.vue')
+  },
+  {
+    path: '/community',
+    name: 'Community',
+    component: () => import('@/views/Community.vue')
+  },
+  {
+    path: '/help-center',
+    name: 'HelpCenter',
+    component: () => import('@/views/HelpCenter.vue')
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFound.vue')
