@@ -142,10 +142,17 @@ const submitForm = () => {
         //   password: registerData.password
         // })
         
-        ElMessage.success('注册成功，即将跳转到登录页')
+        // 注册成功后自动登录
+        localStorage.setItem('isLogin', 'true')
+        localStorage.setItem('username', registerData.username)
+        
+        // 触发storage事件，确保其他页面也能检测到登录状态变化
+        window.dispatchEvent(new Event('storage'))
+        
+        ElMessage.success('注册成功并已自动登录，即将跳转到首页')
         
         setTimeout(() => {
-          router.push('/login')
+          router.push('/')
         }, 1500)
       } catch (error) {
         console.error('注册失败:', error)

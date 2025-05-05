@@ -198,6 +198,14 @@ export class OrdersService {
   }
 
   create(createOrderDto: CreateOrderDto) {
+    // 记录收到的订单数据
+    console.log('收到订单创建请求, 数据:', JSON.stringify(createOrderDto, null, 2));
+    
+    if (!createOrderDto.userId || isNaN(createOrderDto.userId)) {
+      console.error('订单创建失败: 无效的用户ID', createOrderDto.userId);
+      throw new BadRequestException(`无效的用户ID: ${createOrderDto.userId}`);
+    }
+    
     // 实际应用中，这里应该涉及到获取商品价格、计算总金额等逻辑
     const totalAmount = createOrderDto.items.reduce((sum, item) => {
       // 假设我们已经验证了商品和价格
@@ -212,6 +220,7 @@ export class OrdersService {
     }));
     
     const newId = this.generateOrderId();
+    console.log(`生成新订单ID: ${newId}`);
     
     // 创建完整的订单对象
     const newOrder = {
@@ -237,6 +246,7 @@ export class OrdersService {
     };
     
     this.orders.push(newOrder);
+    console.log(`订单创建成功: ${newId}, 用户ID: ${newOrder.userId}`);
     return newOrder;
   }
 

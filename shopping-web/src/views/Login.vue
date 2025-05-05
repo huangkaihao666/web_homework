@@ -78,9 +78,12 @@ const handleLogin = () => {
         if (loginForm.username === 'user1' && loginForm.password === '123456') {
           ElMessage.success('登录成功')
           
-          // 在实际应用中，应该保存登录状态和用户信息
+          // 保存登录状态和用户信息
           localStorage.setItem('isLogin', 'true')
           localStorage.setItem('username', loginForm.username)
+          
+          // 触发storage事件，确保其他页面也能检测到登录状态变化
+          window.dispatchEvent(new Event('storage'))
           
           // 跳转到首页
           router.push('/')

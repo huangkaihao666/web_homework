@@ -1,15 +1,46 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { House, ShoppingCart, List, User, Plus, ArrowDown } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
-// 用户登录状态管理，实际应用中应该从状态管理中获取
+const router = useRouter()
+// 用户登录状态管理
 const isLoggedIn = ref(false)
-const username = ref('用户名')
+const username = ref('')
+
+// 检查登录状态
+const checkLoginStatus = () => {
+  const loginStatus = localStorage.getItem('isLogin')
+  const storedUsername = localStorage.getItem('username')
+  
+  isLoggedIn.value = loginStatus === 'true'
+  username.value = storedUsername || '用户'
+  
+  console.log('登录状态:', isLoggedIn.value ? '已登录' : '未登录', '用户名:', username.value)
+}
 
 const logout = () => {
   // 实现登出逻辑
+  localStorage.removeItem('isLogin')
+  localStorage.removeItem('username')
   isLoggedIn.value = false
+  username.value = ''
+  
+  // 提示用户已登出
+  ElMessage.success('已退出登录')
+  
+  // 跳转到首页
+  router.push('/')
 }
+
+// 组件挂载时检查登录状态
+onMounted(() => {
+  checkLoginStatus()
+  
+  // 监听storage变化，以便在其他标签页登录/登出时更新状态
+  window.addEventListener('storage', checkLoginStatus)
+})
 </script>
 
 <template>

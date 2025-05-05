@@ -1,5 +1,16 @@
 import request from './index';
 
+/**
+ * 获取轮播图列表
+ * @returns {Promise<Array>} - 轮播图列表
+ */
+export const getBanners = () => {
+  return request({
+    url: '/products/banners',
+    method: 'get'
+  })
+}
+
 export default {
   // 获取产品列表
   getProducts(params) {
@@ -24,5 +35,7 @@ export default {
       url: '/categories',
       method: 'get'
     });
-  }
+  },
+
+  getBanners
 }; 

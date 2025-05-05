@@ -74,11 +74,7 @@ import cartApi from '@/api/cart'
 
 const router = useRouter()
 const loading = ref(true)
-const banners = ref([
-  { id: 1, imgUrl: 'https://img.alicdn.com/imgextra/i4/O1CN01LCoaYH1UmNEIlMsUB_!!6000000002568-0-tps-2880-1070.jpg' },
-  { id: 2, imgUrl: 'https://img.alicdn.com/imgextra/i2/O1CN01AJQrI21QbIveZ33JI_!!6000000002001-0-tps-2880-1070.jpg' },
-  { id: 3, imgUrl: 'https://img.alicdn.com/imgextra/i1/O1CN01m1hzc21lOX95MCcbf_!!6000000004809-0-tps-2880-1070.jpg' }
-])
+const banners = ref([])
 
 const categories = ref([])
 const products = ref([])
@@ -125,13 +121,21 @@ const loadData = async () => {
   
   try {
     console.log('开始从API获取数据')
-    // 并行获取分类和商品数据
-    const [categoriesResult, productsResult] = await Promise.all([
+    // 并行获取分类、商品和轮播图数据
+    const [categoriesResult, productsResult, bannersResult] = await Promise.all([
       productApi.getCategories(),
-      productApi.getProducts()
+      productApi.getProducts(),
+      productApi.getBanners()
     ])
     
-    console.log('API返回数据:', { categories: categoriesResult, products: productsResult })
+    console.log('API返回数据:', { 
+      categories: categoriesResult, 
+      products: productsResult,
+      banners: bannersResult 
+    })
+    
+    // 设置轮播图数据
+    banners.value = Array.isArray(bannersResult) ? bannersResult : [];
     
     // 设置分类数据（添加图标）
     categories.value = Array.isArray(categoriesResult) ? categoriesResult.map(category => ({
@@ -145,12 +149,22 @@ const loadData = async () => {
       imgUrl: product.imgUrl || DEFAULT_PRODUCT_IMAGE
     })) : []
     
-    console.log('处理后的数据:', { categories: categories.value, products: products.value })
+    console.log('处理后的数据:', { 
+      categories: categories.value, 
+      products: products.value,
+      banners: banners.value 
+    })
   } catch (error) {
     console.error('加载数据失败:', error)
     ElMessage.error('获取数据失败，请稍后重试')
     
     // 设置一些默认数据，以防API调用失败
+    banners.value = [
+      { id: 1, imgUrl: 'https://img.alicdn.com/imgextra/i4/O1CN01LCoaYH1UmNEIlMsUB_!!6000000002568-0-tps-2880-1070.jpg' },
+      { id: 2, imgUrl: 'https://img.alicdn.com/imgextra/i2/O1CN01AJQrI21QbIveZ33JI_!!6000000002001-0-tps-2880-1070.jpg' },
+      { id: 3, imgUrl: 'https://img.alicdn.com/imgextra/i1/O1CN01m1hzc21lOX95MCcbf_!!6000000004809-0-tps-2880-1070.jpg' }
+    ]
+    
     categories.value = [
       { id: 1, name: '电子产品', icon: 'Monitor' },
       { id: 2, name: '手机', icon: 'Phone' },

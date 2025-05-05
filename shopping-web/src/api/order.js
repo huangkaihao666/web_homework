@@ -6,6 +6,7 @@ import request from './index'
  * @returns {Promise<Object>} - 创建的订单信息
  */
 export const createOrder = (orderData) => {
+  console.log('准备发送订单数据:', JSON.stringify(orderData, null, 2))
   return request({
     url: '/orders',
     method: 'post',
@@ -45,8 +46,9 @@ export const getUserOrders = () => {
  */
 export const cancelOrder = (orderId) => {
   return request({
-    url: `/orders/${orderId}/cancel`,
-    method: 'put'
+    url: `/orders/${orderId}/status`,
+    method: 'put',
+    data: { status: 'CANCELLED' }
   })
 }
 
@@ -58,9 +60,9 @@ export const cancelOrder = (orderId) => {
  */
 export const payOrder = (orderId, paymentData) => {
   return request({
-    url: `/orders/${orderId}/pay`,
+    url: `/orders/${orderId}/status`,
     method: 'put',
-    data: paymentData
+    data: { status: 'PAID', ...paymentData }
   })
 }
 

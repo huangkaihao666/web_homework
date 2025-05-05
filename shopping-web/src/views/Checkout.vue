@@ -282,6 +282,7 @@ const submitOrder = async () => {
   
   try {
     const orderData = {
+      userId: 1,
       items: cartItems.value.map(item => ({
         productId: item.productId,
         quantity: item.quantity
@@ -294,7 +295,9 @@ const submitOrder = async () => {
       deliveryMethod: form.deliveryMethod
     }
     
+    console.log('提交订单数据:', orderData)
     const result = await orderApi.createOrder(orderData)
+    console.log('订单创建成功:', result)
     
     // 清空购物车
     await cartApi.clearCart()
