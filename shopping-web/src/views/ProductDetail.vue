@@ -1,5 +1,5 @@
 <template>
-  <div class="product-detail-container" v-if="product">
+  <div class="product-detail-container container" v-if="product">
     <el-breadcrumb separator="/">
       <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item>{{ getCategoryName(product.category) }}</el-breadcrumb-item>
@@ -8,16 +8,39 @@
 
     <div class="product-content">
       <div class="product-images">
-        <el-image :src="product.imgUrl" fit="contain" class="main-image"></el-image>
+        <el-image 
+          :src="getProxyImageUrl(currentImage)" 
+          fit="contain" 
+          class="main-image"
+          :preview-src-list="productImages.map(img => getProxyImageUrl(img))"
+        >
+          <template #error>
+            <div class="image-error">
+              <el-icon :size="48"><Picture /></el-icon>
+            </div>
+          </template>
+          <template #placeholder>
+            <div class="image-loading">
+              <el-icon class="is-loading" :size="48"><Loading /></el-icon>
+            </div>
+          </template>
+        </el-image>
         <div class="thumbnail-list">
           <el-image 
             v-for="(img, index) in productImages" 
             :key="index" 
-            :src="img" 
+            :src="getProxyImageUrl(img)" 
             fit="cover" 
             class="thumbnail"
-            @click="product.imgUrl = img"
-          ></el-image>
+            :class="{ active: currentImage === img }"
+            @click="currentImage = img"
+          >
+            <template #error>
+              <div class="thumbnail-error">
+                <el-icon><Picture /></el-icon>
+              </div>
+            </template>
+          </el-image>
         </div>
       </div>
       
@@ -60,10 +83,16 @@
               <el-image
                 v-for="(img, index) in detailImages"
                 :key="index"
-                :src="img"
+                :src="getProxyImageUrl(img)"
                 fit="contain"
                 class="detail-image"
-              ></el-image>
+              >
+                <template #error>
+                  <div class="detail-image-error">
+                    <el-icon :size="32"><Picture /></el-icon>
+                  </div>
+                </template>
+              </el-image>
             </div>
           </div>
         </el-tab-pane>
@@ -93,7 +122,7 @@
       </el-tabs>
     </div>
   </div>
-  <div v-else class="loading">
+  <div v-else class="loading container">
     <el-skeleton :rows="10" animated />
   </div>
 </template>
@@ -102,12 +131,16 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ShoppingCart } from '@element-plus/icons-vue'
+import { ShoppingCart, Picture, Loading } from '@element-plus/icons-vue'
+import { getProxyImageUrl, DEFAULT_PRODUCT_IMAGE } from '@/utils/image'
 
 const route = useRoute()
 const router = useRouter()
 const productId = ref(parseInt(route.params.id))
 const quantity = ref(1)
+
+// 当前显示的图片
+const currentImage = ref('')
 
 // 模拟数据，实际项目中应该从API获取
 const product = ref(null)
@@ -145,26 +178,29 @@ onMounted(async () => {
   setTimeout(() => {
     product.value = {
       id: productId.value,
-      name: `商品${productId.value}`,
+      name: `高品质商品${productId.value}`,
       price: 299.00 + productId.value * 100,
       category: (productId.value % 6) + 1,
-      imgUrl: `https://via.placeholder.com/500x500?text=Product+${productId.value}`,
+      imgUrl: DEFAULT_PRODUCT_IMAGE,
       stock: 100,
-      description: '这是一段商品详情描述。这款商品具有很多优点，例如质量好、价格实惠等。'
+      description: '这是一段商品详情描述。这款商品具有很多优点，例如质量好、价格实惠等。这款产品采用高品质材料制造，经久耐用。产品设计简约现代，符合当下流行趋势。无论是自用还是送礼，都是不错的选择。'
     }
+    
+    // 设置当前展示图片
+    currentImage.value = DEFAULT_PRODUCT_IMAGE;
     
     // 模拟商品图片
     productImages.value = [
-      `https://via.placeholder.com/500x500?text=Product+${productId.value}`,
-      `https://via.placeholder.com/500x500?text=Product+${productId.value}+View+1`,
-      `https://via.placeholder.com/500x500?text=Product+${productId.value}+View+2`,
-      `https://via.placeholder.com/500x500?text=Product+${productId.value}+View+3`
+      DEFAULT_PRODUCT_IMAGE,
+      DEFAULT_PRODUCT_IMAGE,
+      DEFAULT_PRODUCT_IMAGE,
+      DEFAULT_PRODUCT_IMAGE
     ]
     
     // 模拟详情图片
     detailImages.value = [
-      `https://via.placeholder.com/800x400?text=Product+${productId.value}+Detail+1`,
-      `https://via.placeholder.com/800x400?text=Product+${productId.value}+Detail+2`
+      DEFAULT_PRODUCT_IMAGE,
+      DEFAULT_PRODUCT_IMAGE
     ]
     
     // 模拟规格参数
@@ -187,99 +223,163 @@ onMounted(async () => {
 
 <style scoped>
 .product-detail-container {
-  padding: 20px 0;
+  padding-top: 20px;
+  padding-bottom: 40px;
 }
 
 .product-content {
-  display: flex;
-  margin: 30px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 30px;
+  margin: 30px 0;
 }
 
 .product-images {
-  flex: 1;
+  width: 100%;
 }
 
 .main-image {
   width: 100%;
   height: 400px;
-  border: 1px solid #eee;
-  margin-bottom: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  background-color: #fff;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.image-error, .image-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  background-color: #f5f7fa;
 }
 
 .thumbnail-list {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .thumbnail {
   width: 80px;
   height: 80px;
-  border: 1px solid #eee;
+  border-radius: 4px;
+  border: 2px solid transparent;
   cursor: pointer;
+  background-color: #fff;
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
 }
 
-.thumbnail:hover {
+.thumbnail.active {
   border-color: #409eff;
+  transform: translateY(-5px);
+}
+
+.thumbnail-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f7fa;
+  color: #909399;
 }
 
 .product-info {
-  flex: 1;
-  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .product-name {
   font-size: 24px;
-  margin-bottom: 15px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+  line-height: 1.4;
 }
 
 .product-price {
   font-size: 28px;
+  font-weight: bold;
   color: #f56c6c;
-  margin-bottom: 20px;
+  margin: 0 0 20px 0;
 }
 
 .product-attrs {
-  background-color: #f8f8f8;
+  background-color: #f5f7fa;
+  border-radius: 8px;
   padding: 15px;
   margin-bottom: 20px;
 }
 
 .attr-item {
+  display: flex;
   margin-bottom: 10px;
 }
 
-.attr-label {
-  color: #666;
-  margin-right: 10px;
+.attr-item:last-child {
+  margin-bottom: 0;
 }
 
-.attr-value {
-  color: #333;
+.attr-label {
+  width: 80px;
+  color: #606266;
 }
 
 .product-actions {
   display: flex;
-  align-items: center;
   gap: 15px;
-  margin-top: 30px;
+  margin-top: 20px;
 }
 
 .product-details {
   margin-top: 40px;
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
 .detail-content {
   padding: 20px 0;
 }
 
+.detail-content h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+}
+
+.detail-content p {
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
 .detail-images {
-  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .detail-image {
   width: 100%;
-  margin-bottom: 10px;
+  max-height: 400px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.detail-image-error {
+  width: 100%;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f7fa;
+  color: #909399;
 }
 
 .reviews {
@@ -288,13 +388,17 @@ onMounted(async () => {
 
 .no-reviews {
   text-align: center;
-  color: #999;
+  color: #909399;
   padding: 40px 0;
 }
 
 .review-item {
-  border-bottom: 1px solid #eee;
-  padding: 15px 0;
+  padding: 15px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.review-item:last-child {
+  border-bottom: none;
 }
 
 .review-header {
@@ -304,16 +408,42 @@ onMounted(async () => {
 }
 
 .username {
-  font-weight: bold;
+  font-weight: 500;
   margin-right: 15px;
 }
 
 .review-time {
-  color: #999;
-  margin-left: 10px;
+  margin-left: auto;
+  color: #909399;
+  font-size: 14px;
+}
+
+.review-content {
+  line-height: 1.6;
 }
 
 .loading {
   padding: 40px 0;
+}
+
+/* 响应式调整 */
+@media (max-width: 992px) {
+  .product-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .main-image {
+    height: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .product-actions {
+    flex-wrap: wrap;
+  }
+  
+  .product-actions .el-button {
+    flex: 1;
+  }
 }
 </style> 

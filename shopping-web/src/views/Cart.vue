@@ -1,5 +1,5 @@
 <template>
-  <div class="cart-container">
+  <div class="cart-container container">
     <div class="page-header">
       <h1>我的购物车</h1>
     </div>
@@ -37,15 +37,25 @@
           <el-checkbox v-model="item.selected" @change="handleItemSelectChange"></el-checkbox>
           
           <div class="item-image">
-            <el-image :src="item.product.imgUrl ? getProxyImageUrl(item.product.imgUrl) : productImage" fit="cover"></el-image>
+            <el-image 
+              :src="getProxyImageUrl(item.product.imgUrl)" 
+              fit="cover"
+              :preview-src-list="[getProxyImageUrl(item.product.imgUrl)]"
+            >
+              <template #error>
+                <div class="image-error">
+                  <el-icon><ShoppingCart /></el-icon>
+                </div>
+              </template>
+            </el-image>
           </div>
           
           <div class="item-info">
             <h3 class="item-name">{{ item.product.name }}</h3>
             <p class="item-specs" v-if="item.specs">
-              <span v-for="(value, key) in item.specs" :key="key">
+              <el-tag v-for="(value, key) in item.specs" :key="key" size="small" effect="plain" class="spec-tag">
                 {{ key }}: {{ value }}
-              </span>
+              </el-tag>
             </p>
           </div>
           
@@ -86,7 +96,7 @@
           </div>
           <div class="checkout-row">
             <span>运费:</span>
-            <span class="price">¥{{ shipping.toFixed(2) }}</span>
+            <span class="price">{{ shipping > 0 ? `¥${shipping.toFixed(2)}` : '免运费' }}</span>
           </div>
           <div class="checkout-row total">
             <span>实付金额:</span>
@@ -114,17 +124,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ShoppingCart, Delete } from '@element-plus/icons-vue'
 import cartApi from '@/api/cart'
-
-// 原始图片URL
-const originalProductImage = 'https://gd-hbimg.huaban.com/1dfba91dd19657eb9d088e1be15e7319a46d5d6b8e0af-0vC9Ym_fw480webp';
-
-// 通过代理访问图片
-const getProxyImageUrl = (url) => {
-  return `http://localhost:3000/api/proxy/image?url=${encodeURIComponent(url)}`
-}
-
-// 统一使用的代理图片地址
-const productImage = getProxyImageUrl(originalProductImage);
+import { getProxyImageUrl, DEFAULT_PRODUCT_IMAGE } from '@/utils/image'
 
 const router = useRouter()
 const loading = ref(true)
@@ -138,12 +138,12 @@ const loadCartData = async () => {
     const res = await cartApi.getCartItems()
     
     // 替换所有商品图片为统一图片
-    cartItems.value = res.data.map(item => ({
+    cartItems.value = res.map(item => ({
       ...item,
       selected: false, // 添加选择状态
       product: {
         ...item.product,
-        imgUrl: item.product.imgUrl || originalProductImage // 使用原始URL，在显示时会通过代理访问
+        imgUrl: item.product.imgUrl || DEFAULT_PRODUCT_IMAGE // 使用原始URL，在显示时会通过代理访问
       }
     }))
   } catch (error) {
@@ -161,7 +161,7 @@ const loadCartData = async () => {
           name: '高端智能手机',
           price: 4999,
           stock: 100,
-          imgUrl: originalProductImage // 使用原始URL，在显示时会通过代理访问
+          imgUrl: DEFAULT_PRODUCT_IMAGE
         },
         specs: {
           颜色: '深空黑',
@@ -177,7 +177,7 @@ const loadCartData = async () => {
           name: '超薄笔记本电脑',
           price: 6999,
           stock: 80,
-          imgUrl: originalProductImage // 使用原始URL，在显示时会通过代理访问
+          imgUrl: DEFAULT_PRODUCT_IMAGE
         },
         specs: {
           颜色: '银色',
@@ -193,7 +193,7 @@ const loadCartData = async () => {
           name: '有机新鲜水果',
           price: 99,
           stock: 50,
-          imgUrl: originalProductImage // 使用原始URL，在显示时会通过代理访问
+          imgUrl: DEFAULT_PRODUCT_IMAGE
         }
       }
     ]
@@ -251,6 +251,7 @@ const removeItem = async (itemId) => {
     
     await cartApi.removeCartItem(itemId)
     cartItems.value = cartItems.value.filter(item => item.id !== itemId)
+    
     ElMessage.success('商品已从购物车移除')
   } catch (error) {
     if (error !== 'cancel') {
@@ -260,7 +261,7 @@ const removeItem = async (itemId) => {
   }
 }
 
-// 计算总价
+// 计算价格
 const totalPrice = computed(() => {
   return cartItems.value
     .filter(item => item.selected)
@@ -269,49 +270,35 @@ const totalPrice = computed(() => {
 
 // 优惠金额
 const discount = computed(() => {
-  // 这里可以根据业务规则计算优惠，例如满减、折扣等
-  // 模拟满300减30的优惠
-  return totalPrice.value >= 300 ? 30 : 0
+  return totalPrice.value * 0.05 // 模拟优惠5%
 })
 
 // 运费
 const shipping = computed(() => {
-  // 这里可以根据业务规则计算运费，例如满额包邮
-  // 模拟满100免运费，否则收取10元运费
-  return totalPrice.value >= 100 ? 0 : 10
+  return totalPrice.value > 0 ? (totalPrice.value > 99 ? 0 : 10) : 0
 })
 
-// 实付金额
+// 最终应付金额
 const payableAmount = computed(() => {
   return totalPrice.value - discount.value + shipping.value
 })
 
 // 去结算
 const checkout = () => {
-  // 检查是否有选中的商品
-  if (selectedCount.value === 0) {
-    ElMessage.warning('请至少选择一件商品')
+  const selectedItems = cartItems.value.filter(item => item.selected)
+  if (selectedItems.length === 0) {
+    ElMessage.warning('请先选择要结算的商品')
     return
   }
   
-  // 获取选中的商品ID列表
-  const selectedItems = cartItems.value
-    .filter(item => item.selected)
-    .map(item => ({
-      id: item.id,
-      productId: item.product.id,
-      quantity: item.quantity,
-      price: item.product.price
-    }))
-  
-  // 存储到本地，传递到结算页面
-  localStorage.setItem('checkoutItems', JSON.stringify(selectedItems))
-  
-  // 跳转到结算页面
-  router.push('/checkout')
+  // 跳转到结算页面，并传递选中的商品数据
+  router.push({
+    path: '/checkout',
+    query: { from: 'cart' }
+  })
 }
 
-// 跳转到首页
+// 返回首页
 const goToHome = () => {
   router.push('/')
 }
@@ -323,9 +310,8 @@ onMounted(() => {
 
 <style scoped>
 .cart-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
+  padding-top: 20px;
+  padding-bottom: 40px;
 }
 
 .page-header {
@@ -333,20 +319,28 @@ onMounted(() => {
 }
 
 .page-header h1 {
+  margin: 0;
   font-size: 24px;
   font-weight: 600;
 }
 
 .loading-container {
   padding: 20px;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
 .empty-cart {
-  padding: 60px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  min-height: 300px;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  padding: 30px;
 }
 
 .cart-content {
@@ -362,15 +356,15 @@ onMounted(() => {
 }
 
 .selected-count {
-  font-size: 14px;
-  color: #666;
+  color: #909399;
 }
 
 .cart-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 40px 100px 1fr 120px 120px 120px 100px;
   align-items: center;
-  padding: 15px 0;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 20px 0;
+  border-bottom: 1px solid #ebeef5;
 }
 
 .cart-item:last-child {
@@ -380,49 +374,65 @@ onMounted(() => {
 .item-image {
   width: 80px;
   height: 80px;
-  margin: 0 15px;
-}
-
-.item-info {
-  flex: 1;
+  overflow: hidden;
+  border-radius: 4px;
   margin-right: 15px;
 }
 
+.item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f7fa;
+  color: #909399;
+}
+
+.item-info {
+  padding-right: 20px;
+}
+
 .item-name {
-  margin: 0 0 5px;
+  margin: 0 0 10px 0;
   font-size: 16px;
-  font-weight: 500;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .item-specs {
   margin: 0;
-  font-size: 12px;
-  color: #666;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
 }
 
-.item-specs span {
-  margin-right: 10px;
+.spec-tag {
+  margin-right: 5px;
 }
 
-.item-price,
-.item-subtotal {
-  width: 120px;
-  text-align: center;
+.item-price, .item-subtotal {
   font-weight: 500;
 }
 
-.item-quantity {
-  width: 120px;
-  text-align: center;
-}
-
-.item-actions {
-  width: 100px;
-  text-align: center;
+.item-subtotal {
+  color: #f56c6c;
 }
 
 .cart-checkout {
   height: fit-content;
+  position: sticky;
+  top: 80px;
 }
 
 .checkout-info {
@@ -437,18 +447,18 @@ onMounted(() => {
 
 .checkout-row.total {
   margin-top: 20px;
-  font-size: 18px;
-  font-weight: 600;
-  border-top: 1px solid #f0f0f0;
   padding-top: 15px;
+  border-top: 1px solid #ebeef5;
+  font-size: 18px;
+  font-weight: bold;
 }
 
 .price {
-  font-weight: 500;
+  color: #303133;
 }
 
-.discount {
-  color: #f56c6c;
+.price.discount {
+  color: #67c23a;
 }
 
 .checkout-button {
@@ -456,31 +466,55 @@ onMounted(() => {
   margin-top: 20px;
 }
 
-/* 响应式调整 */
-@media (max-width: 768px) {
+/* 响应式布局 */
+@media (max-width: 992px) {
   .cart-content {
     grid-template-columns: 1fr;
   }
   
+  .cart-checkout {
+    position: static;
+    top: auto;
+  }
+}
+
+@media (max-width: 768px) {
   .cart-item {
-    flex-wrap: wrap;
+    grid-template-columns: 40px 80px 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 10px;
+    padding: 15px 0;
   }
   
   .item-image {
-    width: 60px;
-    height: 60px;
+    grid-row: span 3;
+    grid-column: 2;
+    width: 80px;
+    height: 80px;
+    margin-right: 0;
   }
   
   .item-info {
-    width: calc(100% - 120px);
+    grid-row: 1;
+    grid-column: 3;
+    padding-right: 0;
   }
   
-  .item-price,
-  .item-quantity,
-  .item-subtotal,
-  .item-actions {
-    margin-top: 10px;
-    width: 25%;
+  .item-price {
+    grid-row: 2;
+    grid-column: 3;
+  }
+  
+  .item-quantity {
+    grid-row: 3;
+    grid-column: 3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .item-subtotal, .item-actions {
+    display: none;
   }
 }
 </style> 
