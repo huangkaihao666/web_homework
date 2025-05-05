@@ -1,8 +1,11 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
+import { OrdersService } from '../orders/orders.service';
 
 @Injectable()
 export class UsersService {
+  constructor(private readonly ordersService: OrdersService) {}
+  
   private users = [
     {
       id: 1,
@@ -37,6 +40,17 @@ export class UsersService {
     
     const { password, ...result } = user;
     return result;
+  }
+  
+  findUserOrders(userId: number) {
+    // 首先确认用户存在
+    this.findOne(userId);
+    
+    // 获取所有订单
+    const allOrders = this.ordersService.findAll();
+    
+    // 过滤出该用户的订单
+    return allOrders.filter(order => order.userId === userId);
   }
 
   findByUsername(username: string) {

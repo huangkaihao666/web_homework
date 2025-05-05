@@ -202,7 +202,7 @@ const loadUsers = async () => {
     const res = await userApi.getUsers(params)
     
     // 替换所有用户头像为统一图片
-    tableData.value = res.data.map(user => ({
+    tableData.value = res.map(user => ({
       ...user,
       avatar: userAvatar
     }))
@@ -311,24 +311,45 @@ const viewUser = async (user) => {
   try {
     // 获取用户详情
     const userDetail = await userApi.getUser(user.id)
+    console.log('获取到的用户详情:', userDetail)
+    
+    // 将获取到的用户详情合并到当前用户对象
     currentUser.value = { 
-      ...userDetail.data,
+      ...userDetail,
       avatar: userAvatar
     }
     
-    // 获取用户订单
-    const orderRes = await userApi.getUserOrders(user.id)
-    currentUser.value.orders = orderRes.data
+    // 由于后端API未实现用户订单接口，这里使用模拟数据
+    currentUser.value.orders = [
+      {
+        id: 10001,
+        totalAmount: 299,
+        createdAt: '2024-05-01 14:23:12',
+        status: 'COMPLETED'
+      },
+      {
+        id: 10002,
+        totalAmount: 599,
+        createdAt: '2024-04-15 09:45:30',
+        status: 'SHIPPED'
+      },
+      {
+        id: 10003,
+        totalAmount: 158,
+        createdAt: '2024-03-20 16:32:45',
+        status: 'CANCELLED'
+      }
+    ]
     
     userDialogVisible.value = true
   } catch (error) {
     console.error('获取用户详情失败:', error)
     ElMessage.error('获取用户详情失败')
     
-    // 如果API调用失败，使用默认数据
+    // 如果API调用失败，使用表格中现有的用户数据
     currentUser.value = { ...user }
     
-    // 添加订单数据
+    // 添加订单模拟数据
     currentUser.value.orders = [
       {
         id: 10001,

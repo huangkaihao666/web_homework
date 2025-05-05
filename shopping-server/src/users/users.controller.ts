@@ -16,6 +16,11 @@ export class UsersController {
     return this.usersService.findOne(+id);
   }
 
+  @Get(':id/orders')
+  findUserOrders(@Param('id') id: string) {
+    return this.usersService.findUserOrders(+id);
+  }
+
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);

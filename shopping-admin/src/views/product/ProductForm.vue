@@ -167,8 +167,8 @@ const loadProductData = async () => {
     
     // 更新表单数据
     Object.keys(form).forEach(key => {
-      if (key in res.data) {
-        form[key] = res.data[key]
+      if (key in res) {
+        form[key] = res[key]
       }
     })
     

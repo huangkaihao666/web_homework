@@ -215,14 +215,14 @@ const loadOrderDetail = async () => {
     const res = await orderApi.getOrder(orderId.value)
     
     // 处理商品图片，替换为统一图片
-    if (res.data.items && res.data.items.length) {
-      res.data.items = res.data.items.map(item => ({
+    if (res.items && res.items.length) {
+      res.items = res.items.map(item => ({
         ...item,
         imgUrl: productImage
       }))
     }
     
-    order.value = res.data
+    order.value = res
   } catch (error) {
     console.error('获取订单详情失败:', error)
     ElMessage.error('获取订单详情失败')

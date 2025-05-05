@@ -307,8 +307,6 @@ const loadCategories = async () => {
     // 判断数据格式，确保正确赋值
     if (Array.isArray(res)) {
       categoryOptions.value = res
-    } else if (res && Array.isArray(res.data)) {
-      categoryOptions.value = res.data
     } else {
       categoryOptions.value = []
     }

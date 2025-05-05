@@ -156,8 +156,18 @@ const shipForm = reactive({
 
 // 获取订单状态文本
 const getOrderStatusText = (status) => {
+  // 处理后端返回的中文状态
+  if (status === '待付款') return '待付款';
+  if (status === '已付款') return '已付款';
+  if (status === '待发货') return '待发货';
+  if (status === '已发货') return '已发货';
+  if (status === '已完成') return '已完成';
+  if (status === '已取消') return '已取消';
+  
+  // 处理前端定义的英文状态
   const statusMap = {
     'PENDING_PAYMENT': '待付款',
+    'PAID': '已付款', 
     'PENDING_SHIPMENT': '待发货',
     'SHIPPED': '已发货',
     'COMPLETED': '已完成',
@@ -168,8 +178,18 @@ const getOrderStatusText = (status) => {
 
 // 获取订单状态标签类型
 const getOrderStatusType = (status) => {
+  // 直接处理中文状态
+  if (status === '待付款') return 'warning';
+  if (status === '已付款') return 'info';
+  if (status === '待发货') return 'info';
+  if (status === '已发货') return 'primary';
+  if (status === '已完成') return 'success';
+  if (status === '已取消') return 'danger';
+  
+  // 处理前端定义的英文状态
   const typeMap = {
     'PENDING_PAYMENT': 'warning',
+    'PAID': 'info',
     'PENDING_SHIPMENT': 'info',
     'SHIPPED': 'primary',
     'COMPLETED': 'success',
@@ -192,43 +212,13 @@ const loadOrders = async () => {
     }
     
     const res = await orderApi.getOrders(params)
-    orders.value = res.data
-    total.value = res.total
+    orders.value = res
+    total.value = Array.isArray(res) ? res.length : 0
   } catch (error) {
     console.error('获取订单列表失败:', error)
     ElMessage.error('获取订单列表失败')
-    
-    // 如果API调用失败，使用默认数据
-    orders.value = [
-      {
-        id: 100001,
-        userId: 2,
-        totalAmount: 697,
-        status: 'COMPLETED',
-        createdAt: '2024-05-01 14:23:12',
-        shippingAddress: '北京市海淀区清华大学计算机科学与技术系',
-        contactPhone: '13812345678'
-      },
-      {
-        id: 100002,
-        userId: 2,
-        totalAmount: 599,
-        status: 'SHIPPED',
-        createdAt: '2024-05-02 09:45:30',
-        shippingAddress: '上海市浦东新区张江高科技园区',
-        contactPhone: '13912345678'
-      },
-      {
-        id: 100003,
-        userId: 2,
-        totalAmount: 997,
-        status: 'PENDING_PAYMENT',
-        createdAt: '2024-05-02 16:12:08',
-        shippingAddress: '广州市天河区',
-        contactPhone: '13712345678'
-      }
-    ]
-    total.value = orders.value.length
+    orders.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
