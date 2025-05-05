@@ -37,7 +37,7 @@
           <el-checkbox v-model="item.selected" @change="handleItemSelectChange"></el-checkbox>
           
           <div class="item-image">
-            <el-image :src="item.product.imgUrl" fit="cover"></el-image>
+            <el-image :src="item.product.imgUrl ? getProxyImageUrl(item.product.imgUrl) : productImage" fit="cover"></el-image>
           </div>
           
           <div class="item-info">
@@ -115,8 +115,16 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ShoppingCart, Delete } from '@element-plus/icons-vue'
 import cartApi from '@/api/cart'
 
-// 统一使用的图片地址
-const productImage = 'https://gd-hbimg.huaban.com/1dfba91dd19657eb9d088e1be15e7319a46d5d6b8e0af-0vC9Ym_fw480webp';
+// 原始图片URL
+const originalProductImage = 'https://gd-hbimg.huaban.com/1dfba91dd19657eb9d088e1be15e7319a46d5d6b8e0af-0vC9Ym_fw480webp';
+
+// 通过代理访问图片
+const getProxyImageUrl = (url) => {
+  return `http://localhost:3000/api/proxy/image?url=${encodeURIComponent(url)}`
+}
+
+// 统一使用的代理图片地址
+const productImage = getProxyImageUrl(originalProductImage);
 
 const router = useRouter()
 const loading = ref(true)
@@ -135,7 +143,7 @@ const loadCartData = async () => {
       selected: false, // 添加选择状态
       product: {
         ...item.product,
-        imgUrl: productImage
+        imgUrl: item.product.imgUrl || originalProductImage // 使用原始URL，在显示时会通过代理访问
       }
     }))
   } catch (error) {
@@ -153,7 +161,7 @@ const loadCartData = async () => {
           name: '高端智能手机',
           price: 4999,
           stock: 100,
-          imgUrl: productImage
+          imgUrl: originalProductImage // 使用原始URL，在显示时会通过代理访问
         },
         specs: {
           颜色: '深空黑',
@@ -169,7 +177,7 @@ const loadCartData = async () => {
           name: '超薄笔记本电脑',
           price: 6999,
           stock: 80,
-          imgUrl: productImage
+          imgUrl: originalProductImage // 使用原始URL，在显示时会通过代理访问
         },
         specs: {
           颜色: '银色',
@@ -185,7 +193,7 @@ const loadCartData = async () => {
           name: '有机新鲜水果',
           price: 99,
           stock: 50,
-          imgUrl: productImage
+          imgUrl: originalProductImage // 使用原始URL，在显示时会通过代理访问
         }
       }
     ]

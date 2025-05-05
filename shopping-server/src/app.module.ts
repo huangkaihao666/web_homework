@@ -6,6 +6,7 @@ import { UsersModule } from './users/users.module';
 import { OrdersModule } from './orders/orders.module';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
+import { ProxyModule } from './proxy/proxy.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CategoriesModule } from './categories/categories.module';
     OrdersModule,
     AuthModule,
     CategoriesModule,
+    ProxyModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -37,7 +37,10 @@
         
         <el-table-column label="头像" width="100">
           <template #default="scope">
-            <el-avatar :size="40" :src="scope.row.imgUrl">
+            <el-avatar 
+              :size="40" 
+              :src="scope.row.imgUrl ? getProxyImageUrl(scope.row.imgUrl) : userAvatar"
+            >
               <el-icon><User /></el-icon>
             </el-avatar>
           </template>
@@ -142,8 +145,16 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { User } from '@element-plus/icons-vue'
 import userApi from '@/api/user'
 
-// 统一使用的图片地址
-const userAvatar = 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp';
+// 原始图片URL
+const originalUserAvatar = 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp';
+
+// 通过代理访问图片
+const getProxyImageUrl = (url) => {
+  return `http://localhost:3000/api/proxy/image?url=${encodeURIComponent(url)}`
+}
+
+// 统一使用的代理图片地址
+const userAvatar = getProxyImageUrl(originalUserAvatar);
 
 const router = useRouter()
 const loading = ref(false)
@@ -206,7 +217,7 @@ const loadUsers = async () => {
     // 替换所有用户头像为统一图片
     tableData.value = res.map(user => ({
       ...user,
-      imgUrl: userAvatar
+      imgUrl: user.imgUrl || originalUserAvatar // 使用原始URL，在显示时会通过代理访问
     }))
     
     total.value = res.total || res.length
@@ -258,7 +269,7 @@ const viewUser = async (user) => {
     // 将获取到的用户详情合并到当前用户对象
     currentUser.value = { 
       ...userDetail,
-      imgUrl: userAvatar
+      imgUrl: userDetail.imgUrl || originalUserAvatar // 使用原始URL，在显示时会通过代理访问
     }
     
     // 由于后端API未实现用户订单接口，这里使用模拟数据

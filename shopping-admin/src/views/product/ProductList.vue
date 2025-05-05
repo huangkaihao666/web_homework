@@ -55,11 +55,21 @@
         <el-table-column label="商品图片" width="100">
           <template #default="scope">
             <el-image 
-              :src="scope.row.imgUrl || productImage" 
-              :preview-src-list="[scope.row.imgUrl || productImage]"
+              :src="scope.row.imgUrl ? getProxyImageUrl(scope.row.imgUrl) : productImage" 
+              :preview-src-list="[scope.row.imgUrl ? getProxyImageUrl(scope.row.imgUrl) : productImage]"
               fit="cover"
               style="width: 60px; height: 60px;"
-            ></el-image>
+              @error="handleImageError(scope.row)"
+            >
+              <template #placeholder>
+                <div class="image-placeholder">加载中...</div>
+              </template>
+              <template #error>
+                <div class="image-error">
+                  <el-icon><Picture /></el-icon>
+                </div>
+              </template>
+            </el-image>
           </template>
         </el-table-column>
         
@@ -149,7 +159,7 @@
         <el-form-item label="商品图片">
           <div class="upload-demo">
             <el-image 
-              :src="productImage" 
+              :src="productForm.imgUrl ? getProxyImageUrl(productForm.imgUrl) : productImage" 
               style="width: 100px; height: 100px; margin-bottom: 10px;"
             ></el-image>
             <el-upload
@@ -242,12 +252,20 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Picture } from '@element-plus/icons-vue'
 import productApi from '@/api/product'
 import categoryApi from '@/api/category'
 
-// 统一使用的图片地址
-const productImage = 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+// 原始图片URL
+const originalImageUrl = 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+
+// 通过代理访问图片
+const getProxyImageUrl = (url) => {
+  return `http://localhost:3000/api/proxy/image?url=${encodeURIComponent(url)}`
+}
+
+// 统一使用的代理图片地址
+const productImage = getProxyImageUrl(originalImageUrl)
 
 // 基础数据
 const loading = ref(false)
@@ -332,11 +350,28 @@ const loadProducts = async () => {
       maxPrice: searchForm.maxPrice || undefined
     }
     
+    console.log('正在调用产品API:', params)
     const res = await productApi.getProducts(params)
+    console.log('API返回数据:', res)
+    
+    // 检查返回的数据中的图片URL
+    if (Array.isArray(res)) {
+      res.forEach(item => {
+        if (!item.imgUrl) {
+          item.imgUrl = originalImageUrl;  // 使用原始URL，getProxyImageUrl会在显示时处理
+          console.log(`为商品 ${item.id} 设置默认图片`);
+        }
+      });
+    }
     
     // 直接使用API返回的数据
     tableData.value = res
     total.value = res.length
+  } catch (error) {
+    console.error('获取产品列表失败:', error)
+    ElMessage.error('获取产品列表失败: ' + (error.message || '未知错误'))
+    tableData.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -405,13 +440,25 @@ const handleEditProduct = async (product) => {
     // 加载商品详情
     const productDetail = await productApi.getProduct(product.id)
     
+    // 确保产品有图片URL
+    if (!productDetail.imgUrl) {
+      productDetail.imgUrl = originalImageUrl;
+    }
+    
     // 直接使用返回的数据
     Object.assign(productForm, productDetail)
     
     productDialogVisible.value = true
   } catch (error) {
+    console.error('获取商品详情失败:', error)
     // 如果API调用失败，使用表格中的数据
     Object.assign(productForm, product)
+    
+    // 确保有图片URL
+    if (!productForm.imgUrl) {
+      productForm.imgUrl = originalImageUrl;
+    }
+    
     productDialogVisible.value = true
   } finally {
     loading.value = false
@@ -461,7 +508,7 @@ const beforeUpload = (file) => {
   
   // 这里应该上传图片到服务器，获取返回的URL
   // 但现在我们只使用统一的图片URL
-  productForm.imgUrl = productImage
+  productForm.imgUrl = originalImageUrl // 使用原始URL，显示时会通过代理访问
   return false // 阻止自动上传
 }
 
@@ -526,6 +573,12 @@ const handleDeleteProduct = async (product) => {
   }
 }
 
+// 处理图片加载错误
+const handleImageError = (product) => {
+  console.error('图片加载失败:', product.imgUrl)
+  product.imgUrl = productImage
+}
+
 onMounted(() => {
   // 先加载分类数据
   loadCategories().then(() => {
@@ -585,5 +638,21 @@ onMounted(() => {
   display: flex;
   align-items: center;
   margin-bottom: 10px;
+}
+
+.image-placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60px;
+  background-color: #f0f0f0;
+}
+
+.image-error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60px;
+  background-color: #f0f0f0;
 }
 </style> 
