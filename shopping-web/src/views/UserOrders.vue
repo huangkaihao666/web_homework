@@ -37,6 +37,9 @@ const fetchUserOrders = async () => {
       })) : []
     }))
     
+    // 按照创建时间倒序排序，最新的订单排在前面
+    orders.value.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    
     console.log('处理后的订单数据:', orders.value)
   } catch (error) {
     console.error('获取订单列表失败:', error)
@@ -60,13 +63,42 @@ const fetchUserOrders = async () => {
 
 // 查看订单详情
 const viewOrderDetail = (orderId) => {
+  console.log('查看订单详情，ID:', orderId, '类型:', typeof orderId)
+  
+  // 订单ID可能是字符串格式，不再强制转换为数字
+  if (!orderId) {
+    console.error('无效的订单ID:', orderId)
+    ElMessage.error('无效的订单ID')
+    return
+  }
+  
+  console.log('使用订单ID:', orderId)
   router.push(`/order/${orderId}`)
 }
 
 // 取消订单
 const cancelOrder = async (order) => {
+  console.log('准备取消订单，订单对象:', order)
+  
+  if (!order) {
+    console.error('无效的订单对象: undefined或null')
+    ElMessage.error('无效的订单')
+    return
+  }
+  
+  if (!order.id && order.id !== 0) {
+    console.error('订单对象中没有ID:', order)
+    ElMessage.error('订单缺少ID')
+    return
+  }
+  
+  // 获取订单ID，不强制转换为数字
+  const orderId = order.id
+  console.log('取消订单，ID:', orderId, '类型:', typeof orderId)
+  
   if (order.status !== 'PENDING') {
-    ElMessage.warning('只能取消待处理的订单')
+    console.warn('尝试取消非待付款状态的订单:', order.status)
+    ElMessage.warning('只能取消待付款的订单')
     return
   }
   
@@ -81,22 +113,210 @@ const cancelOrder = async (order) => {
       }
     )
     
-    await orderApi.cancelOrder(order.id)
-    ElMessage.success('订单已取消')
+    loading.value = true
+    console.log('用户确认取消订单，发送API请求，订单ID:', orderId)
     
-    // 刷新订单列表
-    fetchUserOrders()
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('取消订单失败:', error)
-      ElMessage.error('取消订单失败，请稍后重试')
+    // 先使用模拟数据处理，避免API问题
+    if (typeof orderId === 'number' && orderId >= 1001 && orderId <= 1010) {
+      console.log('使用模拟数据处理取消订单')
+      // 模拟延迟
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // 直接更新当前列表中的订单状态
+      const index = orders.value.findIndex(o => o.id === orderId)
+      if (index !== -1) {
+        orders.value[index].status = 'CANCELLED'
+        console.log('已更新本地订单状态为已取消')
+        ElMessage.success('订单已成功取消')
+      } else {
+        console.warn('未找到要更新的订单')
+        ElMessage.warning('订单状态更新失败')
+      }
+    } else {
+      // 真实API调用
+      console.log('发送取消订单API请求')
+      const result = await orderApi.cancelOrder(orderId)
+      console.log('取消订单API返回结果:', result)
+      
+      // 直接更新当前列表中的订单状态，避免重新加载整个列表
+      const index = orders.value.findIndex(o => o.id === orderId)
+      if (index !== -1) {
+        orders.value[index].status = 'CANCELLED'
+        console.log('已更新本地订单状态为已取消')
+      } else {
+        console.warn('未找到要更新的订单')
+      }
+      
+      ElMessage.success('订单已成功取消')
     }
+  } catch (error) {
+    if (error === 'cancel') {
+      console.log('用户取消了操作')
+      return
+    }
+    
+    console.error('取消订单失败:', error)
+    if (error.response) {
+      console.error('错误状态码:', error.response.status)
+      console.error('错误详情:', error.response.data)
+    }
+    
+    ElMessage.error('取消订单失败，请稍后重试')
+  } finally {
+    loading.value = false
   }
 }
 
 // 跳转到支付页面
-const goToPay = (orderId) => {
-  router.push(`/order/${orderId}/pay`)
+const goToPay = async (orderId) => {
+  console.log('准备支付订单，ID:', orderId, '类型:', typeof orderId)
+  
+  if (orderId === undefined || orderId === null || orderId === '') {
+    console.error('无效的订单ID:', orderId)
+    ElMessage.error('无效的订单ID')
+    return
+  }
+  
+  try {
+    loading.value = true
+    
+    // 先使用模拟数据处理，避免API问题
+    if (typeof orderId === 'number' && orderId >= 1001 && orderId <= 1010) {
+      console.log('使用模拟数据处理支付')
+      // 模拟延迟
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // 创建模拟订单详情
+      const orderDetail = {
+        id: orderId,
+        status: 'PENDING',
+        totalAmount: 2000 + (orderId % 10) * 1000
+      }
+      console.log('模拟订单详情:', orderDetail)
+      
+      // 模拟支付过程
+      const confirmed = await ElMessageBox.confirm(
+        `订单金额: ¥${orderDetail.totalAmount.toFixed(2)}，确认支付吗？`,
+        '支付订单',
+        {
+          confirmButtonText: '确认支付',
+          cancelButtonText: '取消',
+          type: 'info'
+        }
+      ).catch(() => false)
+      
+      if (!confirmed) {
+        console.log('用户取消了支付')
+        return
+      }
+      
+      console.log('用户确认支付，处理模拟支付')
+      
+      // 更新订单状态
+      const index = orders.value.findIndex(o => o.id === orderId)
+      if (index !== -1) {
+        orders.value[index].status = 'PAID'
+        console.log('已更新本地订单状态为已支付')
+        
+        ElMessage.success('订单支付成功')
+        
+        // 显示支付成功信息
+        await ElMessageBox.alert(
+          '您的订单已支付成功，我们将尽快为您安排发货',
+          '支付成功',
+          {
+            confirmButtonText: '确定',
+            type: 'success'
+          }
+        )
+      } else {
+        console.warn('未找到要更新的订单')
+        ElMessage.warning('订单状态更新失败')
+      }
+    } else {
+      // 真实API调用
+      console.log('获取订单详情，订单ID:', orderId)
+      const orderDetail = await orderApi.getOrder(orderId)
+      console.log('获取订单详情成功:', orderDetail)
+      
+      if (!orderDetail || !orderDetail.status) {
+        console.error('获取到的订单详情无效:', orderDetail)
+        ElMessage.error('订单信息获取失败')
+        return
+      }
+      
+      if (orderDetail.status !== 'PENDING') {
+        console.warn('订单状态不是待付款:', orderDetail.status)
+        ElMessage.warning('只能支付待付款状态的订单')
+        return
+      }
+      
+      // 模拟支付过程
+      const confirmed = await ElMessageBox.confirm(
+        `订单金额: ¥${orderDetail.totalAmount.toFixed(2)}，确认支付吗？`,
+        '支付订单',
+        {
+          confirmButtonText: '确认支付',
+          cancelButtonText: '取消',
+          type: 'info'
+        }
+      ).catch(() => false)
+      
+      if (!confirmed) {
+        console.log('用户取消了支付')
+        return
+      }
+      
+      console.log('用户确认支付，处理支付请求')
+      const paymentData = {
+        paymentMethod: 'ALIPAY',
+        paymentTime: new Date().toISOString()
+      }
+      
+      console.log('发送支付订单API请求')
+      const result = await orderApi.payOrder(orderId, paymentData)
+      console.log('支付订单成功:', result)
+      
+      // 直接更新当前列表中的订单状态
+      const index = orders.value.findIndex(o => o.id === orderId)
+      if (index !== -1) {
+        orders.value[index].status = 'PAID'
+        console.log('已更新本地订单状态为已支付')
+      } else {
+        console.warn('未找到要更新的订单')
+      }
+      
+      ElMessage.success('订单支付成功')
+      
+      // 显示支付成功信息
+      await ElMessageBox.alert(
+        '您的订单已支付成功，我们将尽快为您安排发货',
+        '支付成功',
+        {
+          confirmButtonText: '确定',
+          type: 'success'
+        }
+      )
+    }
+  } catch (error) {
+    if (error === 'cancel') {
+      console.log('用户取消了操作')
+      return
+    }
+    
+    console.error('支付订单失败:', error)
+    if (error.message) {
+      console.error('错误消息:', error.message)
+    }
+    if (error.response) {
+      console.error('错误状态码:', error.response.status)
+      console.error('错误详情:', error.response.data)
+    }
+    
+    ElMessage.error('支付订单失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
 }
 
 // 获取订单状态文本
@@ -128,6 +348,208 @@ const getOrderStatusType = (status) => {
 // 返回首页
 const goHome = () => {
   router.push('/')
+}
+
+// 使用模拟数据
+const useMockData = () => {
+  const currentDate = new Date()
+  const yesterday = new Date(currentDate)
+  yesterday.setDate(currentDate.getDate() - 1)
+  const lastWeek = new Date(currentDate)
+  lastWeek.setDate(currentDate.getDate() - 7)
+  
+  // 确保ID是数字类型
+  orders.value = [
+    {
+      id: 1001, // 使用更简单的ID
+      userId: 1,
+      status: 'PENDING',
+      createdAt: currentDate.toISOString(),
+      totalAmount: 4999,
+      items: [
+        {
+          id: 1,
+          productId: 1,
+          name: '智能手机',
+          price: 3999,
+          quantity: 1,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        },
+        {
+          id: 2,
+          productId: 6,
+          name: '智能音箱',
+          price: 399,
+          quantity: 2,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        },
+        {
+          id: 3,
+          productId: 26,
+          name: '瑜伽垫',
+          price: 129,
+          quantity: 1,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        }
+      ],
+      recipientName: '张三',
+      phoneNumber: '13800138000',
+      address: '北京市朝阳区三里屯街道10号',
+      zipCode: '100000',
+      paymentMethod: 'ALIPAY',
+      deliveryMethod: 'EXPRESS'
+    },
+    {
+      id: 1002, // 使用更简单的ID
+      userId: 1,
+      status: 'PAID',
+      createdAt: yesterday.toISOString(),
+      totalAmount: 7299,
+      items: [
+        {
+          id: 4,
+          productId: 2,
+          name: '笔记本电脑',
+          price: 5999,
+          quantity: 1,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        },
+        {
+          id: 5,
+          productId: 4,
+          name: '无线耳机',
+          price: 899,
+          quantity: 1,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        },
+        {
+          id: 6,
+          productId: 22,
+          name: '编程入门指南',
+          price: 89,
+          quantity: 1,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        }
+      ],
+      recipientName: '李四',
+      phoneNumber: '13900139000',
+      address: '上海市浦东新区陆家嘴金融中心',
+      zipCode: '200000',
+      paymentMethod: 'WECHAT',
+      deliveryMethod: 'STANDARD'
+    },
+    {
+      id: 1003, // 使用更简单的ID
+      userId: 1,
+      status: 'SHIPPED',
+      createdAt: lastWeek.toISOString(),
+      totalAmount: 1795,
+      items: [
+        {
+          id: 7,
+          productId: 7,
+          name: '男士休闲夹克',
+          price: 299,
+          quantity: 1,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        },
+        {
+          id: 8,
+          productId: 12,
+          name: '棉质T恤',
+          price: 99,
+          quantity: 3,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        },
+        {
+          id: 9,
+          productId: 10,
+          name: '运动鞋',
+          price: 499,
+          quantity: 2,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        }
+      ],
+      recipientName: '王五',
+      phoneNumber: '13700137000',
+      address: '广州市天河区珠江新城',
+      zipCode: '510000',
+      paymentMethod: 'ALIPAY',
+      deliveryMethod: 'EXPRESS'
+    },
+    {
+      id: 1004, // 使用更简单的ID
+      userId: 1,
+      status: 'COMPLETED',
+      createdAt: new Date(lastWeek.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      totalAmount: 3197,
+      items: [
+        {
+          id: 10,
+          productId: 5,
+          name: '平板电脑',
+          price: 2599,
+          quantity: 1,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        },
+        {
+          id: 11,
+          productId: 13,
+          name: '智能床头灯',
+          price: 159,
+          quantity: 1,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        },
+        {
+          id: 12,
+          productId: 21,
+          name: '烹饪食谱大全',
+          price: 159,
+          quantity: 1,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        }
+      ],
+      recipientName: '赵六',
+      phoneNumber: '13600136000',
+      address: '深圳市南山区科技园',
+      zipCode: '518000',
+      paymentMethod: 'CREDIT_CARD',
+      deliveryMethod: 'STANDARD'
+    },
+    {
+      id: 1005, // 使用更简单的ID
+      userId: 1,
+      status: 'CANCELLED',
+      createdAt: new Date(lastWeek.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+      totalAmount: 599,
+      items: [
+        {
+          id: 13,
+          productId: 28,
+          name: '户外帐篷',
+          price: 599,
+          quantity: 1,
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+        }
+      ],
+      recipientName: '张三',
+      phoneNumber: '13800138000',
+      address: '北京市朝阳区三里屯街道10号',
+      zipCode: '100000',
+      paymentMethod: 'ALIPAY',
+      deliveryMethod: 'SLOW'
+    }
+  ]
+  
+  // 按照创建时间倒序排序，最新的订单排在前面
+  orders.value.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  
+  // 打印每个订单ID及其类型，用于调试
+  orders.value.forEach(order => {
+    console.log(`订单ID: ${order.id}, 类型: ${typeof order.id}, 创建时间: ${new Date(order.createdAt).toLocaleString()}`)
+  })
+  
+  console.log('使用模拟订单数据:', orders.value)
 }
 
 onMounted(() => {

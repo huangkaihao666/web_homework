@@ -32,6 +32,11 @@ api.interceptors.response.use(
     // 调试信息
     console.log(`API响应: ${response.config.url}`, response.data)
     
+    // 检查是否有数据
+    if (response.data === undefined || response.data === null) {
+      console.warn('API返回了空数据:', response.config.url)
+    }
+    
     // 直接返回响应数据，不需要再次访问.data
     return response.data
   },
@@ -41,6 +46,20 @@ api.interceptors.response.use(
     if (error.response) {
       console.error('错误状态:', error.response.status)
       console.error('错误数据:', error.response.data)
+      console.error('请求配置:', error.config)
+      console.error('请求URL:', error.config.url)
+      console.error('请求方法:', error.config.method)
+      if (error.config.data) {
+        try {
+          console.error('请求数据:', JSON.parse(error.config.data))
+        } catch (e) {
+          console.error('请求数据(原始):', error.config.data)
+        }
+      }
+    } else if (error.request) {
+      console.error('没有收到响应:', error.request)
+    } else {
+      console.error('请求配置错误:', error.config)
     }
     
     // 处理特定错误
@@ -54,7 +73,10 @@ api.interceptors.response.use(
       }, 100)
     } else {
       // 显示错误消息
-      ElMessage.error(error.response?.data?.message || '服务器错误，请稍后重试')
+      const errorMessage = error.response?.data?.message || 
+                           (error.message === 'Network Error' ? '网络错误，请检查服务器连接' : '服务器错误，请稍后重试')
+      
+      ElMessage.error(errorMessage)
     }
     
     return Promise.reject(error)

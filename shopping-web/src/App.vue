@@ -91,7 +91,7 @@ onMounted(() => {
     </main>
     <footer class="app-footer">
       <div class="footer-container">
-        <p>© 2024 电商购物网站 - 校企合作项目</p>
+        <p>© 2025 电商购物网站</p>
       </div>
     </footer>
   </div>

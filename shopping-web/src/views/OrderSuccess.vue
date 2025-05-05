@@ -22,38 +22,112 @@ const pageTitle = computed(() => {
 
 // 获取URL中的订单ID
 const fetchOrderDetails = async () => {
-  // 从query或params中获取订单ID
-  orderId.value = route.query.orderId || route.params.id
-  console.log('获取订单ID:', orderId.value, '路由信息:', route.fullPath)
-  
-  if (!orderId.value) {
-    console.error('订单ID不存在')
-    ElMessage.error('订单ID不存在')
-    router.push('/')
-    return
-  }
-  
-  loading.value = true
   try {
-    console.log('开始获取订单详情，订单ID:', orderId.value)
-    const result = await orderApi.getOrder(orderId.value)
-    console.log('API返回订单详情:', result)
+    // 从query或params中获取订单ID
+    const rawOrderId = route.query.orderId || route.params.id
+    console.log('原始订单ID:', rawOrderId, '路由信息:', route.fullPath)
     
-    if (!result) {
-      console.warn('获取到空的订单详情')
-      ElMessage.warning('未找到订单信息')
-      orderInfo.value = null
+    if (!rawOrderId) {
+      console.error('订单ID不存在')
+      ElMessage.error('订单ID不存在')
+      router.push('/')
       return
     }
     
-    orderInfo.value = result
-    console.log('处理后的订单信息:', orderInfo.value)
+    // 订单ID可能是字符串格式，不再强制转换为数字
+    orderId.value = rawOrderId
+    console.log('使用订单ID:', orderId.value)
+    
+    loading.value = true
+    
+    try {
+      console.log('开始获取订单详情，订单ID:', orderId.value)
+      
+      // 判断是否使用模拟数据
+      if ((typeof orderId.value === 'number' || !isNaN(parseInt(orderId.value))) && 
+          parseInt(orderId.value) >= 1001 && 
+          parseInt(orderId.value) <= 1010) {
+        console.log('使用模拟数据返回订单详情')
+        // 模拟延迟
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 创建模拟数据
+        const mockOrder = createMockOrder(parseInt(orderId.value))
+        console.log('生成模拟订单数据:', mockOrder)
+        orderInfo.value = mockOrder
+      } else {
+        // 真实API调用
+        const result = await orderApi.getOrder(orderId.value)
+        console.log('API返回订单详情:', result)
+        
+        if (!result) {
+          console.warn('获取到空的订单详情')
+          ElMessage.warning('未找到订单信息')
+          orderInfo.value = null
+          return
+        }
+        
+        orderInfo.value = result
+      }
+      
+      console.log('最终处理后的订单信息:', orderInfo.value)
+    } catch (error) {
+      console.error('获取订单详情失败:', error)
+      if (error.message) {
+        console.error('错误消息:', error.message)
+      }
+      if (error.response) {
+        console.error('错误状态码:', error.response.status)
+        console.error('错误详情:', error.response.data)
+      }
+      
+      ElMessage.error('获取订单详情失败，请稍后重试')
+      orderInfo.value = null
+    } finally {
+      loading.value = false
+    }
   } catch (error) {
-    console.error('获取订单详情失败:', error)
-    ElMessage.error('获取订单详情失败，请稍后重试')
-    orderInfo.value = null
-  } finally {
+    console.error('处理订单ID时出错:', error)
+    ElMessage.error('处理订单ID时出错')
     loading.value = false
+    router.push('/')
+  }
+}
+
+// 创建模拟订单
+const createMockOrder = (id) => {
+  const currentDate = new Date()
+  
+  return {
+    id: id,
+    userId: 1,
+    status: id % 3 === 0 ? 'PAID' : id % 5 === 0 ? 'COMPLETED' : 'PENDING',
+    createdAt: currentDate.toISOString(),
+    totalAmount: 2000 + (id % 10) * 1000,
+    items: [
+      {
+        id: 1,
+        productId: 1,
+        name: '智能手机',
+        price: 3999,
+        quantity: 1,
+        imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+      },
+      {
+        id: 2,
+        productId: 6,
+        name: '智能音箱',
+        price: 399,
+        quantity: id % 3,
+        imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+      }
+    ],
+    recipientName: '测试用户',
+    phoneNumber: '13800138000',
+    address: '北京市朝阳区三里屯街道10号',
+    zipCode: '100000',
+    paymentMethod: 'ALIPAY',
+    deliveryMethod: 'EXPRESS'
   }
 }
 

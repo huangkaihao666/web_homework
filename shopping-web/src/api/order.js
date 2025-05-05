@@ -20,6 +20,12 @@ export const createOrder = (orderData) => {
  * @returns {Promise<Object>} - 订单详情
  */
 export const getOrder = (orderId) => {
+  if (!orderId) {
+    console.error('获取订单详情时传入了空的订单ID')
+    return Promise.reject(new Error('订单ID不能为空'))
+  }
+  
+  console.log('获取订单详情，订单ID:', orderId)
   return request({
     url: `/orders/${orderId}`,
     method: 'get'
@@ -45,6 +51,12 @@ export const getUserOrders = () => {
  * @returns {Promise<Object>} - 操作结果
  */
 export const cancelOrder = (orderId) => {
+  if (!orderId) {
+    console.error('取消订单时传入了空的订单ID')
+    return Promise.reject(new Error('订单ID不能为空'))
+  }
+  
+  console.log('取消订单，订单ID:', orderId)
   return request({
     url: `/orders/${orderId}/status`,
     method: 'put',
@@ -59,6 +71,12 @@ export const cancelOrder = (orderId) => {
  * @returns {Promise<Object>} - 操作结果
  */
 export const payOrder = (orderId, paymentData) => {
+  if (!orderId) {
+    console.error('支付订单时传入了空的订单ID')
+    return Promise.reject(new Error('订单ID不能为空'))
+  }
+  
+  console.log('支付订单，订单ID:', orderId)
   return request({
     url: `/orders/${orderId}/status`,
     method: 'put',

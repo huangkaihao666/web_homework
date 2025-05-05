@@ -347,6 +347,10 @@ const checkout = () => {
   localStorage.setItem('selectedCartItems', JSON.stringify(selectedItemIds))
   console.log('保存选中的商品ID到localStorage:', selectedItemIds)
   
+  // 保存完整的选中商品详情到localStorage
+  localStorage.setItem('selectedCartItemsDetail', JSON.stringify(selectedItems))
+  console.log('保存完整的选中商品详情到localStorage:', selectedItems)
+  
   // 跳转到结算页面
   router.push({
     path: '/checkout',

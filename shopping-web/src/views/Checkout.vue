@@ -385,12 +385,41 @@ const submitOrder = async () => {
       return
     }
     
+    // 检查商品数据是否有效
+    if (!cartItems.value || cartItems.value.length === 0) {
+      console.error('没有商品数据，无法提交订单')
+      ElMessage.error('购物车数据缺失，请返回购物车重新选择商品')
+      return
+    }
+    
+    // 确保每个商品都有productId和quantity
+    const orderItems = cartItems.value.map(item => {
+      // 如果商品数据中有product对象，使用product.id作为productId
+      if (item.product && item.product.id) {
+        return {
+          productId: item.product.id,
+          quantity: item.quantity
+        }
+      }
+      
+      // 否则尝试直接使用item中的productId
+      if (item.productId) {
+        return {
+          productId: item.productId,
+          quantity: item.quantity
+        }
+      }
+      
+      // 最后尝试使用item.id作为productId
+      return {
+        productId: item.id,
+        quantity: item.quantity
+      }
+    })
+    
     const orderData = {
       userId: userId,
-      items: cartItems.value.map(item => ({
-        productId: item.productId,
-        quantity: item.quantity
-      })),
+      items: orderItems,
       recipientName: form.recipientName,
       phoneNumber: form.phoneNumber,
       address: `${form.province} ${form.city} ${form.address}`,
@@ -414,10 +443,18 @@ const submitOrder = async () => {
         confirmButtonText: '确定',
         type: 'success',
         callback: () => {
-          router.push({
-            path: '/order/success',
-            query: { orderId: result.id }
-          })
+          console.log('订单创建结果:', result)
+          // 确保有订单ID
+          if (result && result.id) {
+            console.log('跳转到订单成功页面，订单ID:', result.id)
+            router.push({
+              path: '/order/success',
+              query: { orderId: result.id }
+            })
+          } else {
+            console.error('创建订单成功但没有返回订单ID')
+            router.push('/user/orders')
+          }
         }
       }
     )
@@ -460,43 +497,44 @@ const goBack = () => {
 }
 
 onMounted(() => {
-  // 获取本地存储的购物车选中商品
-  const selectedItems = localStorage.getItem('selectedCartItems')
+  // 获取本地存储的商品详情
+  const selectedItemsDetail = localStorage.getItem('selectedCartItemsDetail')
   
-  if (!selectedItems) {
-    console.warn('没有找到选中的商品，返回购物车页面')
-    ElMessage.warning('未选择任何商品，请先在购物车选择要结算的商品')
-    router.push('/cart')
+  if (!selectedItemsDetail) {
+    console.warn('没有找到选中的商品详情，尝试获取ID')
+    
+    // 兼容旧版本，尝试使用ID列表
+    const selectedItems = localStorage.getItem('selectedCartItems')
+    if (!selectedItems) {
+      console.warn('也没有找到选中的商品ID，返回购物车页面')
+      ElMessage.warning('未选择任何商品，请先在购物车选择要结算的商品')
+      router.push('/cart')
+      return
+    }
+    
+    // 如果只有ID但没有详情，使用API获取
+    loadCartItems()
     return
   }
   
   try {
-    // 直接加载本地购物车数据，不再调用API
-    console.log('从本地存储获取购物车数据')
-    const cartData = localStorage.getItem('cartData')
+    // 直接使用本地存储的完整商品详情
+    console.log('从本地存储获取商品详情')
+    const selectedItems = JSON.parse(selectedItemsDetail)
     
-    if (cartData) {
-      const allCartItems = JSON.parse(cartData)
-      const selectedIds = JSON.parse(selectedItems)
-      
-      // 过滤出选中的商品
-      const filteredItems = allCartItems.filter(item => selectedIds.includes(item.id))
-      
-      if (filteredItems.length === 0) {
-        console.warn('没有匹配的商品数据')
-        ElMessage.warning('购物车数据不完整，请返回购物车重新选择商品')
-        router.push('/cart')
-        return
-      }
-      
-      console.log('结算的商品:', filteredItems)
-      cartItems.value = filteredItems
-      loading.value = false
-    } else {
-      console.warn('本地没有购物车数据')
-      ElMessage.warning('购物车为空，请先添加商品')
+    if (!Array.isArray(selectedItems) || selectedItems.length === 0) {
+      console.warn('选中的商品详情无效或为空')
+      ElMessage.warning('购物车数据不完整，请返回购物车重新选择商品')
       router.push('/cart')
+      return
     }
+    
+    console.log('结算的商品详情:', selectedItems)
+    cartItems.value = selectedItems
+    loading.value = false
+    
+    // 加载用户地址
+    loadAddresses()
   } catch (error) {
     console.error('处理购物车数据出错:', error)
     ElMessage.error('加载购物车数据失败')
