@@ -163,6 +163,9 @@ const loadCartData = async () => {
     }))
     
     console.log('处理后的购物车数据:', cartItems.value)
+    
+    // 保存购物车数据到localStorage
+    localStorage.setItem('cartData', JSON.stringify(cartItems.value))
   } catch (error) {
     console.error('获取购物车数据失败:', error)
     ElMessage.error('获取购物车数据失败，请稍后重试')
@@ -214,6 +217,9 @@ const loadCartData = async () => {
         }
       }
     ]
+    
+    // 保存默认购物车数据到localStorage
+    localStorage.setItem('cartData', JSON.stringify(cartItems.value))
   } finally {
     loading.value = false
   }
@@ -308,7 +314,40 @@ const checkout = () => {
     return
   }
   
-  // 跳转到结算页面，并传递选中的商品数据
+  // 检查用户是否已登录
+  const userInfo = localStorage.getItem('userInfo')
+  let userId = null
+  
+  if (userInfo) {
+    try {
+      const parsedUserInfo = JSON.parse(userInfo)
+      if (parsedUserInfo && parsedUserInfo.id) {
+        userId = parseInt(parsedUserInfo.id)
+        console.log('用户已登录，用户ID:', userId)
+      }
+    } catch (error) {
+      console.error('解析用户信息失败:', error)
+    }
+  }
+  
+  if (!userId || isNaN(userId)) {
+    console.log('用户未登录或ID无效，使用默认用户ID 1')
+    // 为未登录用户创建默认用户信息
+    const defaultUserInfo = {
+      id: 1,
+      username: 'guest',
+      role: 'user'
+    }
+    localStorage.setItem('userInfo', JSON.stringify(defaultUserInfo))
+    console.log('已设置默认用户信息:', defaultUserInfo)
+  }
+  
+  // 保存选中的商品ID到localStorage
+  const selectedItemIds = selectedItems.map(item => item.id)
+  localStorage.setItem('selectedCartItems', JSON.stringify(selectedItemIds))
+  console.log('保存选中的商品ID到localStorage:', selectedItemIds)
+  
+  // 跳转到结算页面
   router.push({
     path: '/checkout',
     query: { from: 'cart' }

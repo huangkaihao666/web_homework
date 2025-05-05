@@ -115,13 +115,13 @@
             <div class="cart-items">
               <div v-for="item in cartItems" :key="item.id" class="cart-item">
                 <div class="item-image">
-                  <el-image :src="getProxyImageUrl(item.imgUrl)" fit="cover" />
+                  <el-image :src="getProxyImageUrl(item.product.imgUrl)" fit="cover" />
                 </div>
                 <div class="item-info">
-                  <div class="item-name">{{ item.name }}</div>
-                  <div class="item-price">¥{{ item.price.toFixed(2) }} × {{ item.quantity }}</div>
+                  <div class="item-name">{{ item.product.name }}</div>
+                  <div class="item-price">¥{{ item.product.price.toFixed(2) }} × {{ item.quantity }}</div>
                 </div>
-                <div class="item-total">¥{{ (item.price * item.quantity).toFixed(2) }}</div>
+                <div class="item-total">¥{{ (item.product.price * item.quantity).toFixed(2) }}</div>
               </div>
             </div>
             
@@ -204,7 +204,7 @@ const getDeliveryPrice = (method) => {
 // 商品总价
 const subtotal = computed(() => {
   return cartItems.value.reduce((sum, item) => {
-    return sum + (item.price * item.quantity)
+    return sum + (item.product.price * item.quantity)
   }, 0)
 })
 
@@ -222,13 +222,52 @@ const total = computed(() => {
 const loadCartItems = async () => {
   loading.value = true
   try {
+    console.log('开始获取购物车数据')
     const result = await cartApi.getCartItems()
-    cartItems.value = result || []
+    console.log('购物车API返回数据:', result)
     
-    if (cartItems.value.length === 0) {
-      ElMessage.warning('购物车为空，无法结账')
+    if (!result || !Array.isArray(result)) {
+      console.error('购物车API返回格式错误:', result)
+      ElMessage.error('获取购物车数据失败，返回格式错误')
       router.push('/cart')
+      return
     }
+    
+    // 只处理选中的商品
+    const selectedItems = localStorage.getItem('selectedCartItems')
+    let filteredItems = []
+    
+    if (selectedItems) {
+      try {
+        const parsedItems = JSON.parse(selectedItems)
+        if (Array.isArray(parsedItems) && parsedItems.length > 0) {
+          console.log('从localStorage获取到选中的商品:', parsedItems)
+          // 过滤获取到的选中商品
+          filteredItems = result.filter(item => parsedItems.includes(item.id))
+        } else {
+          console.warn('从localStorage获取到的选中商品无效:', parsedItems)
+          // 如果没有选中的商品，默认使用全部数据
+          filteredItems = result
+        }
+      } catch (error) {
+        console.error('解析选中商品失败:', error)
+        filteredItems = result
+      }
+    } else {
+      console.log('没有找到选中的商品，使用所有购物车商品')
+      filteredItems = result
+    }
+    
+    // 如果过滤后没有商品，回到购物车页面
+    if (filteredItems.length === 0) {
+      console.warn('购物车为空或没有选中商品')
+      ElMessage.warning('购物车为空或没有选中任何商品，请先选择商品')
+      router.push('/cart')
+      return
+    }
+    
+    console.log('准备结算的商品数据:', filteredItems)
+    cartItems.value = filteredItems
   } catch (error) {
     console.error('获取购物车数据失败:', error)
     ElMessage.error('获取购物车数据失败，请稍后重试')
@@ -240,17 +279,56 @@ const loadCartItems = async () => {
 
 // 加载用户地址
 const loadAddresses = async () => {
+  // 首先获取用户ID，确保它是有效的
+  const userInfo = localStorage.getItem('userInfo')
+  let userId = null
+  let hasValidUser = false
+  
+  if (userInfo) {
+    try {
+      const parsedUserInfo = JSON.parse(userInfo)
+      if (parsedUserInfo && parsedUserInfo.id) {
+        userId = parseInt(parsedUserInfo.id)
+        if (!isNaN(userId) && userId > 0) {
+          hasValidUser = true
+          console.log('获取地址时使用的用户ID:', userId)
+        } else {
+          console.error('用户ID无效:', userId)
+        }
+      }
+    } catch (error) {
+      console.error('解析用户信息失败:', error)
+    }
+  }
+  
+  if (!hasValidUser) {
+    console.log('用户未登录或ID无效，不加载地址数据，使用默认空地址')
+    addresses.value = []
+    return
+  }
+  
   try {
+    console.log('开始获取用户地址数据')
     const result = await userApi.getUserAddresses()
-    addresses.value = result || []
+    console.log('地址API返回数据:', result)
     
-    if (addresses.value.length > 0) {
-      selectedAddress.value = addresses.value[0].id
-      fillAddressForm(addresses.value[0])
+    if (result && Array.isArray(result)) {
+      addresses.value = result
+      
+      if (addresses.value.length > 0) {
+        selectedAddress.value = addresses.value[0].id
+        fillAddressForm(addresses.value[0])
+      } else {
+        console.log('用户没有保存的地址')
+      }
+    } else {
+      console.warn('地址API返回格式错误或空数据:', result)
+      addresses.value = []
     }
   } catch (error) {
     console.error('获取地址数据失败:', error)
-    // 不显示错误，因为新用户可能没有地址
+    addresses.value = []
+    // 不显示错误消息，因为新用户可能没有地址，这是正常情况
   }
 }
 
@@ -281,8 +359,34 @@ const submitOrder = async () => {
   submitting.value = true
   
   try {
+    // 获取本地存储的用户信息
+    const userInfo = localStorage.getItem('userInfo')
+    let userId = 1 // 默认用户ID
+
+    // 如果存在用户信息，尝试解析并获取用户ID
+    if (userInfo) {
+      try {
+        const parsedUserInfo = JSON.parse(userInfo)
+        if (parsedUserInfo && parsedUserInfo.id) {
+          userId = parseInt(parsedUserInfo.id)
+          console.log('从localStorage获取到用户ID:', userId)
+        }
+      } catch (error) {
+        console.error('解析用户信息失败:', error)
+      }
+    } else {
+      console.log('未找到用户信息，使用默认用户ID:', userId)
+    }
+
+    // 验证用户ID是否为有效数字
+    if (isNaN(userId) || userId <= 0) {
+      console.error('无效的用户ID:', userId)
+      ElMessage.error('无效的用户ID，请重新登录')
+      return
+    }
+    
     const orderData = {
-      userId: 1,
+      userId: userId,
       items: cartItems.value.map(item => ({
         productId: item.productId,
         quantity: item.quantity
@@ -356,8 +460,48 @@ const goBack = () => {
 }
 
 onMounted(() => {
-  loadCartItems()
-  loadAddresses()
+  // 获取本地存储的购物车选中商品
+  const selectedItems = localStorage.getItem('selectedCartItems')
+  
+  if (!selectedItems) {
+    console.warn('没有找到选中的商品，返回购物车页面')
+    ElMessage.warning('未选择任何商品，请先在购物车选择要结算的商品')
+    router.push('/cart')
+    return
+  }
+  
+  try {
+    // 直接加载本地购物车数据，不再调用API
+    console.log('从本地存储获取购物车数据')
+    const cartData = localStorage.getItem('cartData')
+    
+    if (cartData) {
+      const allCartItems = JSON.parse(cartData)
+      const selectedIds = JSON.parse(selectedItems)
+      
+      // 过滤出选中的商品
+      const filteredItems = allCartItems.filter(item => selectedIds.includes(item.id))
+      
+      if (filteredItems.length === 0) {
+        console.warn('没有匹配的商品数据')
+        ElMessage.warning('购物车数据不完整，请返回购物车重新选择商品')
+        router.push('/cart')
+        return
+      }
+      
+      console.log('结算的商品:', filteredItems)
+      cartItems.value = filteredItems
+      loading.value = false
+    } else {
+      console.warn('本地没有购物车数据')
+      ElMessage.warning('购物车为空，请先添加商品')
+      router.push('/cart')
+    }
+  } catch (error) {
+    console.error('处理购物车数据出错:', error)
+    ElMessage.error('加载购物车数据失败')
+    router.push('/cart')
+  }
 })
 </script>
 
