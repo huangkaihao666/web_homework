@@ -22,14 +22,14 @@ export class OrdersService {
           name: '高端智能手机',
           price: 4999,
           quantity: 1,
-          imgUrl: 'https://img.alicdn.com/imgextra/i1/6000000004230/O1CN01BIbRJ41hqjzOXQBBx_!!6000000004230-0-tbvideo.jpg',
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp',
         },
         {
           id: 2,
           name: '手机保护壳',
           price: 999,
           quantity: 1,
-          imgUrl: 'https://img.alicdn.com/bao/uploaded/i2/2549841410/O1CN01wR1yTD1MNps7IQl4o_!!0-item_pic.jpg',
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp',
         },
       ],
     },
@@ -51,7 +51,7 @@ export class OrdersService {
           name: '超薄笔记本电脑',
           price: 6999,
           quantity: 1,
-          imgUrl: 'https://img.alicdn.com/bao/uploaded/i3/1714128138/O1CN01DL5Jok29zFmPUJ08e_!!0-item_pic.jpg',
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp',
         },
       ],
     },
@@ -73,7 +73,7 @@ export class OrdersService {
           name: '时尚休闲上衣',
           price: 299,
           quantity: 1,
-          imgUrl: 'https://img.alicdn.com/bao/uploaded/i2/2206686532409/O1CN01ZdIeOS1TfMnEJYJqJ_!!0-item_pic.jpg',
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp',
         },
       ],
     },
@@ -96,7 +96,7 @@ export class OrdersService {
           name: '高端智能手机',
           price: 4999,
           quantity: 1,
-          imgUrl: 'https://img.alicdn.com/imgextra/i1/O1CN01m1hzc21lOX95MCcbf_!!6000000004809-0-tps-2880-1070.jpg',
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp',
         },
         {
           id: 2,
@@ -104,7 +104,7 @@ export class OrdersService {
           name: '手机保护壳',
           price: 999,
           quantity: 1,
-          imgUrl: 'https://img.alicdn.com/imgextra/i2/O1CN01AJQrI21QbIveZ33JI_!!6000000002001-0-tps-2880-1070.jpg',
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp',
         },
       ],
     },
@@ -127,7 +127,7 @@ export class OrdersService {
           name: '超薄笔记本电脑',
           price: 6999,
           quantity: 1,
-          imgUrl: 'https://img.alicdn.com/imgextra/i4/O1CN01LCoaYH1UmNEIlMsUB_!!6000000002568-0-tps-2880-1070.jpg',
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp',
         },
       ],
     },
@@ -150,7 +150,7 @@ export class OrdersService {
           name: '时尚休闲上衣',
           price: 299,
           quantity: 1,
-          imgUrl: 'https://img.alicdn.com/imgextra/i1/O1CN01m1hzc21lOX95MCcbf_!!6000000004809-0-tps-2880-1070.jpg',
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp',
         },
       ],
     },
@@ -173,7 +173,7 @@ export class OrdersService {
           name: '高端相机',
           price: 8999,
           quantity: 1,
-          imgUrl: 'https://img.alicdn.com/imgextra/i2/O1CN01AJQrI21QbIveZ33JI_!!6000000002001-0-tps-2880-1070.jpg',
+          imgUrl: 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp',
         },
       ],
     },
@@ -235,14 +235,25 @@ export class OrdersService {
       zipCode: createOrderDto.zipCode || '000000',
       paymentMethod: createOrderDto.paymentMethod || 'ALIPAY',
       deliveryMethod: createOrderDto.deliveryMethod || 'EXPRESS',
-      items: processedItems.map((item, index) => ({
-        id: index + 1,
-        productId: item.productId,
-        name: `商品${item.productId}`,
-        price: item.price,
-        quantity: item.quantity,
-        imgUrl: 'https://img.alicdn.com/imgextra/i1/O1CN01m1hzc21lOX95MCcbf_!!6000000004809-0-tps-2880-1070.jpg',
-      })),
+      items: processedItems.map((item, index) => {
+        // 从DTO中提取商品的额外信息
+        const originalItem = createOrderDto.items.find(i => i.productId === item.productId) || {};
+        
+        // 安全地访问可能不存在的属性
+        const productName = (originalItem as any).productName;
+        const imgUrl = (originalItem as any).imgUrl;
+        
+        return {
+          id: index + 1,
+          productId: item.productId,
+          // 使用前端提供的商品名称，如果没有则使用默认名称
+          name: productName || `商品${item.productId}`,
+          price: item.price,
+          quantity: item.quantity,
+          // 使用前端提供的图片URL，如果没有则使用默认图片
+          imgUrl: imgUrl || 'https://img.alicdn.com/imgextra/i1/O1CN01m1hzc21lOX95MCcbf_!!6000000004809-0-tps-2880-1070.jpg',
+        };
+      }),
     };
     
     this.orders.push(newOrder);
@@ -250,12 +261,15 @@ export class OrdersService {
     return newOrder;
   }
 
-  updateStatus(id: number, status: OrderStatus) {
-    const idStr = id.toString();
+  updateStatus(id: string | number, status: OrderStatus) {
+    const idStr = typeof id === 'number' ? id.toString() : id;
     const order = this.findOne(idStr);
+    
+    console.log(`正在更新订单 ${idStr} 的状态为 ${status}`);
     
     // 检查订单状态变更的合法性
     if (order.status === 'CANCELLED') {
+      console.error(`订单 ${idStr} 已取消，不能更改状态`);
       throw new BadRequestException('已取消的订单不能更改状态');
     }
     
@@ -263,6 +277,7 @@ export class OrdersService {
       order.status === 'COMPLETED' &&
       status !== OrderStatus.CANCELLED
     ) {
+      console.error(`订单 ${idStr} 已完成，只能取消不能更改为其他状态`);
       throw new BadRequestException('已完成的订单只能取消不能更改为其他状态');
     }
     
@@ -270,6 +285,7 @@ export class OrdersService {
     const index = this.orders.findIndex((o) => o.id === idStr);
     this.orders[index].status = status;
     
+    console.log(`订单 ${idStr} 状态更新成功为 ${status}`);
     return this.orders[index];
   }
 

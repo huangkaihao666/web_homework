@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import userApi from '@/api/user'
 import orderApi from '@/api/order'
+import { getProxyImageUrl, DEFAULT_PRODUCT_IMAGE } from '@/utils/image'
 
 const router = useRouter()
 const loading = ref(true)
@@ -16,7 +17,7 @@ const fetchUserOrders = async () => {
     console.log('开始通过API获取用户订单数据')
     // 使用订单API获取数据（从orderApi而非userApi获取订单）
     const result = await orderApi.getUserOrders()
-    console.log('API返回订单数据:', result)
+    console.log('API返回订单数据:', JSON.stringify(result, null, 2))
     
     if (!result || !Array.isArray(result) || result.length === 0) {
       console.warn('API返回订单数据不符合预期:', result)
@@ -26,16 +27,62 @@ const fetchUserOrders = async () => {
     }
     
     // 确保每个订单项的totalAmount是数字
-    orders.value = result.map(order => ({
-      ...order,
-      totalAmount: typeof order.totalAmount === 'number' ? order.totalAmount : parseFloat(order.totalAmount) || 0,
-      // 确保每个项目都有必需的属性
-      items: Array.isArray(order.items) ? order.items.map(item => ({
-        ...item,
-        price: typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0,
-        quantity: typeof item.quantity === 'number' ? item.quantity : parseInt(item.quantity) || 1
-      })) : []
-    }))
+    orders.value = result.map(order => {
+      // 详细输出订单数据格式，方便调试
+      console.log('处理订单数据 ID:', order.id, '完整数据:', JSON.stringify(order, null, 2))
+      
+      // 处理订单项
+      let processedItems = []
+      if (Array.isArray(order.items)) {
+        processedItems = order.items.map(item => {
+          console.log('订单项原始数据:', JSON.stringify(item, null, 2))
+          
+          // 提取所有可能包含商品信息的字段，用于调试
+          const possibleFields = {
+            id: item.id, 
+            productId: item.productId,
+            name: item.name,
+            productName: item.productName,
+            product: item.product,
+            price: item.price,
+            quantity: item.quantity,
+            imgUrl: item.imgUrl
+          }
+          console.log('可能的商品信息字段:', JSON.stringify(possibleFields, null, 2))
+          
+          // 处理不同格式的订单项
+          const processedItem = {
+            ...item,
+            // 确保有商品名称 - 尝试所有可能的字段名
+            name: item.name || 
+                  item.productName || 
+                  (item.product ? item.product.name : null) || 
+                  `商品 ${item.productId || '未知'}`,
+            // 确保价格为数字
+            price: typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0,
+            // 确保数量为数字
+            quantity: typeof item.quantity === 'number' ? item.quantity : parseInt(item.quantity) || 1,
+            // 确保有图片URL
+            imgUrl: item.imgUrl || 
+                    (item.product ? item.product.imgUrl : null) || 
+                    'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp'
+          }
+          
+          console.log('处理后的订单项:', processedItem)
+          return processedItem
+        })
+      } else {
+        console.warn('订单没有items数组或格式不正确:', order.id)
+      }
+      
+      return {
+        ...order,
+        totalAmount: typeof order.totalAmount === 'number' ? 
+                    order.totalAmount : 
+                    parseFloat(order.totalAmount) || 0,
+        items: processedItems
+      }
+    })
     
     // 按照创建时间倒序排序，最新的订单排在前面
     orders.value.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -588,27 +635,38 @@ onMounted(() => {
           </div>
         </div>
         
+        <!-- 订单商品列表 -->
         <div class="order-items">
-          <div v-for="item in order.items" :key="item.id" class="order-item">
+          <div v-if="!order.items || order.items.length === 0" class="no-items">
+            <el-empty description="订单中没有商品信息" :image-size="60"></el-empty>
+          </div>
+          
+          <div v-else v-for="(item, index) in order.items" :key="index" class="order-item">
             <div class="item-image">
-              <el-image :src="item.imgUrl || ''" fit="cover">
+              <el-image :src="getProxyImageUrl(item.imgUrl) || DEFAULT_PRODUCT_IMAGE" fit="cover">
                 <template #error>
                   <div class="image-placeholder">暂无图片</div>
                 </template>
               </el-image>
             </div>
             <div class="item-info">
-              <div class="item-name">{{ item.name }}</div>
-              <div class="item-price">¥{{ item.price.toFixed(2) }} × {{ item.quantity }}</div>
+              <div class="item-name">{{ item.name || `商品 ${item.productId || index + 1}` }}</div>
+              <div class="item-price">
+                ¥{{ (typeof item.price === 'number' ? item.price : 0).toFixed(2) }} × 
+                {{ (typeof item.quantity === 'number' ? item.quantity : 1) }}
+              </div>
             </div>
-            <div class="item-total">¥{{ (item.price * item.quantity).toFixed(2) }}</div>
+            <div class="item-total">
+              ¥{{ ((typeof item.price === 'number' ? item.price : 0) * 
+                  (typeof item.quantity === 'number' ? item.quantity : 1)).toFixed(2) }}
+            </div>
           </div>
         </div>
         
         <div class="order-footer">
           <div class="order-total">
             <span>订单总额: </span>
-            <span class="total-amount">¥{{ order.totalAmount.toFixed(2) }}</span>
+            <span class="total-amount">¥{{ (typeof order.totalAmount === 'number' ? order.totalAmount : 0).toFixed(2) }}</span>
           </div>
           
           <div class="order-actions">

@@ -23,7 +23,8 @@ export class OrdersController {
 
   @Put(':id/status')
   updateStatus(@Param('id') id: string, @Body() updateOrderStatusDto: UpdateOrderStatusDto) {
-    return this.ordersService.updateStatus(+id, updateOrderStatusDto.status);
+    console.log(`接收到订单状态更新请求，订单ID: ${id}, 状态: ${updateOrderStatusDto.status}`);
+    return this.ordersService.updateStatus(id, updateOrderStatusDto.status);
   }
 
   @Get('user/:userId')

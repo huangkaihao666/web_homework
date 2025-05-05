@@ -394,11 +394,17 @@ const submitOrder = async () => {
     
     // 确保每个商品都有productId和quantity
     const orderItems = cartItems.value.map(item => {
+      // 调试日志
+      console.log('准备提交的商品数据:', item)
+      
       // 如果商品数据中有product对象，使用product.id作为productId
       if (item.product && item.product.id) {
         return {
           productId: item.product.id,
-          quantity: item.quantity
+          productName: item.product.name, // 添加商品名称
+          price: item.product.price,      // 添加商品价格
+          quantity: item.quantity,
+          imgUrl: item.product.imgUrl     // 添加商品图片
         }
       }
       
@@ -406,14 +412,20 @@ const submitOrder = async () => {
       if (item.productId) {
         return {
           productId: item.productId,
-          quantity: item.quantity
+          productName: item.name || `商品 ${item.productId}`, // 添加商品名称
+          price: item.price || 0,                           // 添加商品价格
+          quantity: item.quantity,
+          imgUrl: item.imgUrl || ''                         // 添加商品图片
         }
       }
       
       // 最后尝试使用item.id作为productId
       return {
         productId: item.id,
-        quantity: item.quantity
+        productName: item.name || `商品 ${item.id}`, // 添加商品名称
+        price: item.price || 0,                    // 添加商品价格
+        quantity: item.quantity,
+        imgUrl: item.imgUrl || ''                  // 添加商品图片
       }
     })
     

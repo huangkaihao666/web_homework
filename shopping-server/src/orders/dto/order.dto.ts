@@ -23,6 +23,12 @@ export class OrderItemDto {
   @IsOptional()
   @IsNumber()
   price?: number;
+  
+  @IsOptional()
+  productName?: string;
+  
+  @IsOptional()
+  imgUrl?: string;
 }
 
 export class CreateOrderDto {
