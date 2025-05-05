@@ -13,101 +13,49 @@ const orders = ref([])
 const fetchUserOrders = async () => {
   loading.value = true
   try {
-    console.log('开始获取用户订单数据')
-    const result = await userApi.getUserOrders()
+    console.log('开始通过API获取用户订单数据')
+    // 使用订单API获取数据（从orderApi而非userApi获取订单）
+    const result = await orderApi.getUserOrders()
     console.log('API返回订单数据:', result)
     
-    if (!result || !Array.isArray(result)) {
-      console.warn('API返回非数组订单数据:', result)
-      // 使用模拟数据
+    if (!result || !Array.isArray(result) || result.length === 0) {
+      console.warn('API返回订单数据不符合预期:', result)
+      // 如果后端返回空数据，仍使用模拟数据，便于开发
       useMockData()
       return
     }
     
-    orders.value = result
+    // 确保每个订单项的totalAmount是数字
+    orders.value = result.map(order => ({
+      ...order,
+      totalAmount: typeof order.totalAmount === 'number' ? order.totalAmount : parseFloat(order.totalAmount) || 0,
+      // 确保每个项目都有必需的属性
+      items: Array.isArray(order.items) ? order.items.map(item => ({
+        ...item,
+        price: typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0,
+        quantity: typeof item.quantity === 'number' ? item.quantity : parseInt(item.quantity) || 1
+      })) : []
+    }))
+    
     console.log('处理后的订单数据:', orders.value)
   } catch (error) {
     console.error('获取订单列表失败:', error)
+    
+    if (error.response) {
+      console.error('错误状态码:', error.response.status)
+      console.error('错误详情:', error.response.data)
+    } else if (error.request) {
+      console.error('未收到响应:', error.request)
+    } else {
+      console.error('错误信息:', error.message)
+    }
+    
     ElMessage.error('获取订单列表失败，使用模拟数据')
     // 使用模拟数据
     useMockData()
   } finally {
     loading.value = false
   }
-}
-
-// 使用模拟数据（当API失败时）
-const useMockData = () => {
-  console.log('使用模拟订单数据')
-  orders.value = [
-    {
-      id: 'ORD12345',
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-      totalAmount: 5998,
-      recipientName: '测试用户',
-      phoneNumber: '13812345678',
-      address: '北京市海淀区中关村大街1号',
-      paymentMethod: 'ALIPAY',
-      deliveryMethod: 'EXPRESS',
-      items: [
-        {
-          id: 1,
-          name: '高端智能手机',
-          price: 4999,
-          quantity: 1,
-          imgUrl: ''
-        },
-        {
-          id: 2,
-          name: '手机保护壳',
-          price: 999,
-          quantity: 1,
-          imgUrl: ''
-        }
-      ]
-    },
-    {
-      id: 'ORD12346',
-      status: 'PAID',
-      createdAt: new Date(Date.now() - 86400000).toISOString(), // 昨天
-      totalAmount: 6999,
-      recipientName: '测试用户',
-      phoneNumber: '13812345678',
-      address: '北京市海淀区中关村大街1号',
-      paymentMethod: 'WECHAT',
-      deliveryMethod: 'STANDARD',
-      items: [
-        {
-          id: 3,
-          name: '超薄笔记本电脑',
-          price: 6999,
-          quantity: 1,
-          imgUrl: ''
-        }
-      ]
-    },
-    {
-      id: 'ORD12347',
-      status: 'SHIPPED',
-      createdAt: new Date(Date.now() - 2 * 86400000).toISOString(), // 前天
-      totalAmount: 299,
-      recipientName: '测试用户',
-      phoneNumber: '13812345678',
-      address: '北京市海淀区中关村大街1号',
-      paymentMethod: 'CREDIT_CARD',
-      deliveryMethod: 'EXPRESS',
-      items: [
-        {
-          id: 4,
-          name: '时尚休闲上衣',
-          price: 299,
-          quantity: 1,
-          imgUrl: ''
-        }
-      ]
-    }
-  ]
 }
 
 // 查看订单详情

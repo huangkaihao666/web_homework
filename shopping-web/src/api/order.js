@@ -30,8 +30,10 @@ export const getOrder = (orderId) => {
  * @returns {Promise<Array>} - 订单列表
  */
 export const getUserOrders = () => {
+  console.log('获取用户ID=1的所有订单')
+  // 这里固定用户ID为1，实际应用需要从用户会话中获取
   return request({
-    url: '/orders/user',
+    url: '/orders/user/1',
     method: 'get'
   })
 }

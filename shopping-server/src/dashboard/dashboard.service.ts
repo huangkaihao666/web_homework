@@ -15,7 +15,7 @@ export interface CategoryData {
 }
 
 export interface OrderInfo {
-  id: number;
+  id: string;
   user: string;
   amount: number;
   date: string;

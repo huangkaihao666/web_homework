@@ -2,11 +2,13 @@ import { IsNotEmpty, IsNumber, IsArray, ValidateNested, IsEnum, IsOptional } fro
 import { Type } from 'class-transformer';
 
 export enum OrderStatus {
-  PENDING_PAYMENT = '待付款',
-  PAID = '已付款',
-  SHIPPED = '已发货',
-  COMPLETED = '已完成',
-  CANCELLED = '已取消',
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  SHIPPED = 'SHIPPED',
+  DELIVERED = 'DELIVERED',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+  PENDING_PAYMENT = 'PENDING_PAYMENT',
 }
 
 export class OrderItemDto {
@@ -33,6 +35,24 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   items: OrderItemDto[];
+
+  @IsOptional()
+  recipientName?: string;
+
+  @IsOptional()
+  phoneNumber?: string;
+
+  @IsOptional()
+  address?: string;
+
+  @IsOptional()
+  zipCode?: string;
+
+  @IsOptional()
+  paymentMethod?: string;
+
+  @IsOptional()
+  deliveryMethod?: string;
 
   @IsOptional()
   shippingAddress?: string;

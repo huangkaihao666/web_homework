@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, BadRequestException } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
 
@@ -13,7 +13,7 @@ export class OrdersController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.ordersService.findOne(+id);
+    return this.ordersService.findOne(id);
   }
 
   @Post()
@@ -24,5 +24,15 @@ export class OrdersController {
   @Put(':id/status')
   updateStatus(@Param('id') id: string, @Body() updateOrderStatusDto: UpdateOrderStatusDto) {
     return this.ordersService.updateStatus(+id, updateOrderStatusDto.status);
+  }
+
+  @Get('user/:userId')
+  getUserOrders(@Param('userId') userId: string) {
+    const userIdNumber = parseInt(userId, 10);
+    if (isNaN(userIdNumber)) {
+      throw new BadRequestException('用户ID必须是数字');
+    }
+    
+    return this.ordersService.findByUserId(userIdNumber);
   }
 } 
