@@ -1,517 +1,521 @@
 <template>
-  <div class="checkout-container">
-    <h1>订单结算</h1>
+  <div class="checkout-container container">
+    <div class="page-header">
+      <h1>结算页面</h1>
+      <el-button @click="goBack" plain>返回购物车</el-button>
+    </div>
     
-    <el-steps :active="activeStep" finish-status="success" class="checkout-steps">
-      <el-step title="确认订单"></el-step>
-      <el-step title="填写地址"></el-step>
-      <el-step title="支付"></el-step>
-      <el-step title="完成"></el-step>
-    </el-steps>
+    <div v-if="loading" class="loading-container">
+      <el-skeleton :rows="15" animated />
+    </div>
     
-    <!-- 第一步：确认订单 -->
-    <div v-if="activeStep === 0" class="checkout-step">
-      <h2>确认商品信息</h2>
-      <el-table :data="selectedItems" style="width: 100%">
-        <el-table-column label="商品" width="400">
-          <template #default="scope">
-            <div class="product-info">
-              <el-image :src="scope.row.imgUrl" class="product-image"></el-image>
-              <div class="product-details">
-                <div class="product-name">{{ scope.row.name }}</div>
+    <template v-else>
+      <div class="checkout-main">
+        <div class="checkout-form">
+          <el-card class="address-card">
+            <template #header>
+              <div class="card-header">
+                <h2>收货地址</h2>
+              </div>
+            </template>
+            
+            <div v-if="addresses.length > 0" class="saved-addresses">
+              <el-select v-model="selectedAddress" @change="handleAddressChange" placeholder="选择已保存的地址" style="width: 100%">
+                <el-option
+                  v-for="addr in addresses"
+                  :key="addr.id"
+                  :label="`${addr.recipientName} - ${addr.province}${addr.city}${addr.address}`"
+                  :value="addr.id"
+                />
+              </el-select>
+            </div>
+            
+            <el-form :model="form" label-position="top">
+              <el-row :gutter="20">
+                <el-col :span="12">
+                  <el-form-item label="收件人">
+                    <el-input v-model="form.recipientName" placeholder="请输入收件人姓名" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="联系电话">
+                    <el-input v-model="form.phoneNumber" placeholder="请输入联系电话" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              
+              <el-row :gutter="20">
+                <el-col :span="8">
+                  <el-form-item label="省份">
+                    <el-input v-model="form.province" placeholder="请输入省份" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="城市">
+                    <el-input v-model="form.city" placeholder="请输入城市" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="邮政编码">
+                    <el-input v-model="form.zipCode" placeholder="请输入邮政编码" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              
+              <el-form-item label="详细地址">
+                <el-input v-model="form.address" placeholder="请输入详细地址" />
+              </el-form-item>
+            </el-form>
+          </el-card>
+          
+          <el-card class="delivery-card">
+            <template #header>
+              <div class="card-header">
+                <h2>配送方式</h2>
+              </div>
+            </template>
+            
+            <div class="delivery-options">
+              <el-radio-group v-model="form.deliveryMethod">
+                <el-radio v-for="method in deliveryMethods" :key="method.value" :label="method.value" border>
+                  <div class="delivery-option">
+                    <span>{{ method.label }}</span>
+                    <span class="delivery-price">¥{{ method.price.toFixed(2) }}</span>
+                  </div>
+                </el-radio>
+              </el-radio-group>
+            </div>
+          </el-card>
+          
+          <el-card class="payment-card">
+            <template #header>
+              <div class="card-header">
+                <h2>支付方式</h2>
+              </div>
+            </template>
+            
+            <div class="payment-options">
+              <el-radio-group v-model="form.paymentMethod">
+                <el-radio v-for="method in paymentMethods" :key="method.value" :label="method.value" border>
+                  {{ method.label }}
+                </el-radio>
+              </el-radio-group>
+            </div>
+          </el-card>
+        </div>
+        
+        <div class="checkout-summary">
+          <el-card class="summary-card">
+            <template #header>
+              <div class="card-header">
+                <h2>订单摘要</h2>
+              </div>
+            </template>
+            
+            <div class="cart-items">
+              <div v-for="item in cartItems" :key="item.id" class="cart-item">
+                <div class="item-image">
+                  <el-image :src="getProxyImageUrl(item.imgUrl)" fit="cover" />
+                </div>
+                <div class="item-info">
+                  <div class="item-name">{{ item.name }}</div>
+                  <div class="item-price">¥{{ item.price.toFixed(2) }} × {{ item.quantity }}</div>
+                </div>
+                <div class="item-total">¥{{ (item.price * item.quantity).toFixed(2) }}</div>
               </div>
             </div>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="单价" width="150">
-          <template #default="scope">
-            <span class="price">¥{{ scope.row.price.toFixed(2) }}</span>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="数量" width="150">
-          <template #default="scope">
-            <span>x {{ scope.row.quantity }}</span>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="小计">
-          <template #default="scope">
-            <span class="subtotal">¥{{ (scope.row.price * scope.row.quantity).toFixed(2) }}</span>
-          </template>
-        </el-table-column>
-      </el-table>
-      
-      <div class="order-summary">
-        <div class="summary-item">
-          <span>商品总价：</span>
-          <span class="price">¥{{ totalPrice.toFixed(2) }}</span>
-        </div>
-        <div class="summary-item">
-          <span>运费：</span>
-          <span class="price">¥{{ shippingFee.toFixed(2) }}</span>
-        </div>
-        <div class="summary-item total">
-          <span>应付总额：</span>
-          <span class="total-price">¥{{ (totalPrice + shippingFee).toFixed(2) }}</span>
+            
+            <div class="price-summary">
+              <div class="price-row">
+                <span>商品总计</span>
+                <span>¥{{ subtotal.toFixed(2) }}</span>
+              </div>
+              <div class="price-row">
+                <span>配送费</span>
+                <span>¥{{ deliveryFee.toFixed(2) }}</span>
+              </div>
+              <div class="price-row total">
+                <span>订单总计</span>
+                <span>¥{{ total.toFixed(2) }}</span>
+              </div>
+            </div>
+            
+            <div class="submit-order">
+              <el-button type="danger" size="large" @click="submitOrder" :loading="submitting" style="width: 100%">
+                提交订单
+              </el-button>
+            </div>
+          </el-card>
         </div>
       </div>
-      
-      <div class="step-actions">
-        <el-button @click="$router.push('/cart')">返回购物车</el-button>
-        <el-button type="primary" @click="nextStep">下一步</el-button>
-      </div>
-    </div>
-    
-    <!-- 第二步：填写地址 -->
-    <div v-if="activeStep === 1" class="checkout-step">
-      <h2>收货地址</h2>
-      
-      <div v-if="addresses.length > 0" class="address-list">
-        <el-radio-group v-model="selectedAddressId">
-          <div v-for="address in addresses" :key="address.id" class="address-item">
-            <el-radio :label="address.id">
-              <div class="address-content">
-                <div class="address-info">
-                  <p><strong>{{ address.name }}</strong> {{ address.phone }}</p>
-                  <p>{{ address.province }} {{ address.city }} {{ address.district }}</p>
-                  <p>{{ address.detail }}</p>
-                </div>
-                <div class="address-actions">
-                  <el-button type="text" @click.stop="editAddress(address)">编辑</el-button>
-                  <el-button type="text" @click.stop="deleteAddress(address.id)">删除</el-button>
-                </div>
-              </div>
-            </el-radio>
-          </div>
-        </el-radio-group>
-      </div>
-      
-      <div class="add-address">
-        <el-button type="primary" plain @click="showAddressForm = true">添加新地址</el-button>
-      </div>
-      
-      <el-dialog v-model="showAddressForm" title="收货地址" width="600px">
-        <el-form :model="addressForm" label-width="120px">
-          <el-form-item label="收货人">
-            <el-input v-model="addressForm.name" placeholder="请输入收货人姓名"></el-input>
-          </el-form-item>
-          <el-form-item label="手机号码">
-            <el-input v-model="addressForm.phone" placeholder="请输入手机号码"></el-input>
-          </el-form-item>
-          <el-form-item label="所在地区">
-            <el-select v-model="addressForm.province" placeholder="省" style="width: 120px">
-              <el-option label="北京市" value="北京市"></el-option>
-              <el-option label="上海市" value="上海市"></el-option>
-              <el-option label="广东省" value="广东省"></el-option>
-            </el-select>
-            <el-select v-model="addressForm.city" placeholder="市" style="width: 120px; margin-left: 10px">
-              <el-option label="北京市" value="北京市"></el-option>
-              <el-option label="上海市" value="上海市"></el-option>
-              <el-option label="广州市" value="广州市"></el-option>
-              <el-option label="深圳市" value="深圳市"></el-option>
-            </el-select>
-            <el-select v-model="addressForm.district" placeholder="区/县" style="width: 120px; margin-left: 10px">
-              <el-option label="海淀区" value="海淀区"></el-option>
-              <el-option label="朝阳区" value="朝阳区"></el-option>
-              <el-option label="浦东新区" value="浦东新区"></el-option>
-              <el-option label="天河区" value="天河区"></el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="详细地址">
-            <el-input v-model="addressForm.detail" type="textarea" placeholder="请输入详细地址"></el-input>
-          </el-form-item>
-          <el-form-item label="设为默认地址">
-            <el-switch v-model="addressForm.isDefault"></el-switch>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="showAddressForm = false">取消</el-button>
-            <el-button type="primary" @click="saveAddress">保存</el-button>
-          </span>
-        </template>
-      </el-dialog>
-      
-      <div class="step-actions">
-        <el-button @click="prevStep">上一步</el-button>
-        <el-button type="primary" @click="nextStep" :disabled="!selectedAddressId">下一步</el-button>
-      </div>
-    </div>
-    
-    <!-- 第三步：支付 -->
-    <div v-if="activeStep === 2" class="checkout-step">
-      <h2>选择支付方式</h2>
-      
-      <div class="payment-methods">
-        <el-radio-group v-model="paymentMethod">
-          <div class="payment-method-item">
-            <el-radio label="wechat">
-              <div class="payment-method-content">
-                <img src="https://via.placeholder.com/40x40?text=WeChat" alt="微信支付" />
-                <span>微信支付</span>
-              </div>
-            </el-radio>
-          </div>
-          <div class="payment-method-item">
-            <el-radio label="alipay">
-              <div class="payment-method-content">
-                <img src="https://via.placeholder.com/40x40?text=Alipay" alt="支付宝" />
-                <span>支付宝</span>
-              </div>
-            </el-radio>
-          </div>
-          <div class="payment-method-item">
-            <el-radio label="creditcard">
-              <div class="payment-method-content">
-                <img src="https://via.placeholder.com/40x40?text=Card" alt="银行卡" />
-                <span>银行卡</span>
-              </div>
-            </el-radio>
-          </div>
-        </el-radio-group>
-      </div>
-      
-      <div class="payment-summary">
-        <div class="summary-item total">
-          <span>应付总额：</span>
-          <span class="total-price">¥{{ (totalPrice + shippingFee).toFixed(2) }}</span>
-        </div>
-      </div>
-      
-      <div class="step-actions">
-        <el-button @click="prevStep">上一步</el-button>
-        <el-button type="primary" @click="submitOrder" :disabled="!paymentMethod">提交订单</el-button>
-      </div>
-    </div>
-    
-    <!-- 第四步：完成 -->
-    <div v-if="activeStep === 3" class="checkout-step">
-      <div class="order-success">
-        <el-result
-          icon="success"
-          title="订单提交成功"
-          :sub-title="`订单号: ${orderId}`"
-        >
-          <template #extra>
-            <el-button type="primary" @click="$router.push('/orders')">查看订单</el-button>
-            <el-button @click="$router.push('/')">继续购物</el-button>
-          </template>
-        </el-result>
-      </div>
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getProxyImageUrl } from '@/utils/image'
+import cartApi from '@/api/cart'
+import userApi from '@/api/user'
+import orderApi from '@/api/order'
 
 const router = useRouter()
-const activeStep = ref(0)
-const selectedItems = ref([])
-const totalPrice = ref(0)
-const shippingFee = ref(10)
+const loading = ref(true)
+const submitting = ref(false)
+const cartItems = ref([])
 const addresses = ref([])
-const selectedAddressId = ref(null)
-const showAddressForm = ref(false)
-const paymentMethod = ref('wechat')
-const orderId = ref('')
+const selectedAddress = ref('')
 
-const addressForm = ref({
-  id: null,
-  name: '',
-  phone: '',
-  province: '',
+// 表单数据
+const form = reactive({
+  recipientName: '',
+  phoneNumber: '',
+  address: '',
   city: '',
-  district: '',
-  detail: '',
-  isDefault: false
+  province: '',
+  zipCode: '',
+  paymentMethod: 'ALIPAY',
+  deliveryMethod: 'STANDARD'
 })
 
-// 加载选中的商品
-const loadSelectedItems = () => {
-  // 实际应用中应该从API获取已选中的购物车商品
-  // 模拟数据
-  selectedItems.value = [
-    { 
-      id: 1, 
-      name: '商品1', 
-      price: 299, 
-      quantity: 2, 
-      imgUrl: 'https://via.placeholder.com/100x100?text=Product+1'
-    },
-    { 
-      id: 2, 
-      name: '商品2', 
-      price: 599, 
-      quantity: 1, 
-      imgUrl: 'https://via.placeholder.com/100x100?text=Product+2'
-    }
-  ]
-  
-  // 计算总价
-  totalPrice.value = selectedItems.value.reduce((total, item) => {
-    return total + (item.price * item.quantity)
+// 支付方式
+const paymentMethods = [
+  { value: 'ALIPAY', label: '支付宝' },
+  { value: 'WECHAT', label: '微信支付' },
+  { value: 'CREDIT_CARD', label: '信用卡' },
+  { value: 'COD', label: '货到付款' }
+]
+
+// 配送方式
+const deliveryMethods = [
+  { value: 'EXPRESS', label: '快递 (2-3天)', price: 20 },
+  { value: 'STANDARD', label: '标准配送 (3-5天)', price: 10 },
+  { value: 'SLOW', label: '慢递 (5-7天)', price: 0 }
+]
+
+// 获取送货方式价格
+const getDeliveryPrice = (method) => {
+  const delivery = deliveryMethods.find(d => d.value === method)
+  return delivery ? delivery.price : 0
+}
+
+// 商品总价
+const subtotal = computed(() => {
+  return cartItems.value.reduce((sum, item) => {
+    return sum + (item.price * item.quantity)
   }, 0)
-}
+})
 
-// 加载地址
-const loadAddresses = () => {
-  // 实际应用中应该从API获取用户地址
-  // 模拟数据
-  addresses.value = [
-    { 
-      id: 1, 
-      name: '张三', 
-      phone: '13812345678', 
-      province: '北京市', 
-      city: '北京市', 
-      district: '海淀区', 
-      detail: '清华大学计算机科学与技术系', 
-      isDefault: true 
-    },
-    { 
-      id: 2, 
-      name: '李四', 
-      phone: '13912345678', 
-      province: '上海市', 
-      city: '上海市', 
-      district: '浦东新区', 
-      detail: '张江高科技园区', 
-      isDefault: false 
+// 配送费
+const deliveryFee = computed(() => {
+  return getDeliveryPrice(form.deliveryMethod)
+})
+
+// 订单总价
+const total = computed(() => {
+  return subtotal.value + deliveryFee.value
+})
+
+// 加载购物车数据
+const loadCartItems = async () => {
+  loading.value = true
+  try {
+    const result = await cartApi.getCartItems()
+    cartItems.value = result || []
+    
+    if (cartItems.value.length === 0) {
+      ElMessage.warning('购物车为空，无法结账')
+      router.push('/cart')
     }
-  ]
-  
-  // 选择默认地址
-  const defaultAddress = addresses.value.find(addr => addr.isDefault)
-  if (defaultAddress) {
-    selectedAddressId.value = defaultAddress.id
-  } else if (addresses.value.length > 0) {
-    selectedAddressId.value = addresses.value[0].id
+  } catch (error) {
+    console.error('获取购物车数据失败:', error)
+    ElMessage.error('获取购物车数据失败，请稍后重试')
+    router.push('/cart')
+  } finally {
+    loading.value = false
   }
 }
 
-// 下一步
-const nextStep = () => {
-  if (activeStep.value < 3) {
-    if (activeStep.value === 1 && !selectedAddressId.value) {
-      ElMessage.warning('请选择收货地址')
-      return
+// 加载用户地址
+const loadAddresses = async () => {
+  try {
+    const result = await userApi.getUserAddresses()
+    addresses.value = result || []
+    
+    if (addresses.value.length > 0) {
+      selectedAddress.value = addresses.value[0].id
+      fillAddressForm(addresses.value[0])
     }
-    activeStep.value++
+  } catch (error) {
+    console.error('获取地址数据失败:', error)
+    // 不显示错误，因为新用户可能没有地址
   }
 }
 
-// 上一步
-const prevStep = () => {
-  if (activeStep.value > 0) {
-    activeStep.value--
-  }
+// 填充地址表单
+const fillAddressForm = (address) => {
+  form.recipientName = address.recipientName
+  form.phoneNumber = address.phoneNumber
+  form.address = address.address
+  form.city = address.city
+  form.province = address.province
+  form.zipCode = address.zipCode
 }
 
-// 编辑地址
-const editAddress = (address) => {
-  addressForm.value = { ...address }
-  showAddressForm.value = true
-}
-
-// 删除地址
-const deleteAddress = (id) => {
-  addresses.value = addresses.value.filter(addr => addr.id !== id)
-  if (selectedAddressId.value === id) {
-    selectedAddressId.value = addresses.value.length > 0 ? addresses.value[0].id : null
-  }
-}
-
-// 保存地址
-const saveAddress = () => {
-  if (!addressForm.value.name || !addressForm.value.phone || !addressForm.value.detail) {
-    ElMessage.warning('请填写完整的地址信息')
-    return
-  }
-  
-  if (addressForm.value.id) {
-    // 更新已有地址
-    const index = addresses.value.findIndex(addr => addr.id === addressForm.value.id)
-    if (index !== -1) {
-      addresses.value[index] = { ...addressForm.value }
-    }
-  } else {
-    // 添加新地址
-    const newId = addresses.value.length > 0 
-      ? Math.max(...addresses.value.map(addr => addr.id)) + 1 
-      : 1
-    addresses.value.push({ ...addressForm.value, id: newId })
-    selectedAddressId.value = newId
-  }
-  
-  // 处理默认地址
-  if (addressForm.value.isDefault) {
-    addresses.value.forEach(addr => {
-      if (addr.id !== addressForm.value.id) {
-        addr.isDefault = false
-      }
-    })
-  }
-  
-  showAddressForm.value = false
-  
-  // 重置表单
-  addressForm.value = {
-    id: null,
-    name: '',
-    phone: '',
-    province: '',
-    city: '',
-    district: '',
-    detail: '',
-    isDefault: false
+// 选择地址
+const handleAddressChange = () => {
+  const address = addresses.value.find(a => a.id === selectedAddress.value)
+  if (address) {
+    fillAddressForm(address)
   }
 }
 
 // 提交订单
-const submitOrder = () => {
-  // 实际应用中应该调用API提交订单
-  // 模拟提交订单并获取订单号
-  setTimeout(() => {
-    orderId.value = `ORDER${Date.now().toString().substring(5)}`
-    activeStep.value = 3
-    ElMessage.success('订单提交成功')
-  }, 1000)
+const submitOrder = async () => {
+  if (!validateForm()) {
+    return
+  }
+  
+  submitting.value = true
+  
+  try {
+    const orderData = {
+      items: cartItems.value.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity
+      })),
+      recipientName: form.recipientName,
+      phoneNumber: form.phoneNumber,
+      address: `${form.province} ${form.city} ${form.address}`,
+      zipCode: form.zipCode,
+      paymentMethod: form.paymentMethod,
+      deliveryMethod: form.deliveryMethod
+    }
+    
+    const result = await orderApi.createOrder(orderData)
+    
+    // 清空购物车
+    await cartApi.clearCart()
+    
+    // 显示成功消息
+    ElMessageBox.alert(
+      '您的订单已提交成功，我们将尽快为您处理',
+      '订单提交成功',
+      {
+        confirmButtonText: '确定',
+        type: 'success',
+        callback: () => {
+          router.push({
+            path: '/order/success',
+            query: { orderId: result.id }
+          })
+        }
+      }
+    )
+  } catch (error) {
+    console.error('提交订单失败:', error)
+    ElMessage.error('提交订单失败，请稍后重试')
+  } finally {
+    submitting.value = false
+  }
+}
+
+// 表单验证
+const validateForm = () => {
+  if (!form.recipientName) {
+    ElMessage.warning('请输入收件人姓名')
+    return false
+  }
+  
+  if (!form.phoneNumber) {
+    ElMessage.warning('请输入联系电话')
+    return false
+  }
+  
+  if (!form.address || !form.city || !form.province) {
+    ElMessage.warning('请输入完整的收货地址')
+    return false
+  }
+  
+  if (!form.zipCode) {
+    ElMessage.warning('请输入邮政编码')
+    return false
+  }
+  
+  return true
+}
+
+// 返回购物车
+const goBack = () => {
+  router.push('/cart')
 }
 
 onMounted(() => {
-  // 加载数据
-  loadSelectedItems()
+  loadCartItems()
   loadAddresses()
 })
 </script>
 
 <style scoped>
 .checkout-container {
-  padding: 20px 0;
+  padding: 20px;
 }
 
-.checkout-container h1 {
-  margin-bottom: 30px;
-}
-
-.checkout-steps {
-  margin-bottom: 40px;
-}
-
-.checkout-step {
-  margin-bottom: 40px;
-}
-
-.checkout-step h2 {
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
-}
-
-.product-info {
+.page-header {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.loading-container {
+  padding: 40px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.checkout-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.checkout-form {
+  flex: 2;
+  min-width: 300px;
+}
+
+.checkout-summary {
+  flex: 1;
+  min-width: 300px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
 }
 
-.product-image {
+.card-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.address-card,
+.delivery-card,
+.payment-card {
+  margin-bottom: 20px;
+}
+
+.saved-addresses {
+  margin-bottom: 20px;
+}
+
+.delivery-options,
+.payment-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.delivery-option {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.delivery-price {
+  font-weight: bold;
+  color: #f56c6c;
+}
+
+.cart-items {
+  margin-bottom: 20px;
+}
+
+.cart-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.cart-item:last-child {
+  border-bottom: none;
+}
+
+.item-image {
   width: 60px;
   height: 60px;
-  object-fit: cover;
-  margin-right: 15px;
-}
-
-.price, .subtotal {
-  color: #f56c6c;
-  font-weight: bold;
-}
-
-.order-summary {
-  margin-top: 30px;
-  padding: 20px;
-  background-color: #f5f7fa;
+  margin-right: 10px;
+  overflow: hidden;
   border-radius: 4px;
 }
 
-.summary-item {
+.item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.item-info {
+  flex: 1;
+}
+
+.item-name {
+  font-weight: 500;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.item-price {
+  color: #606266;
+  font-size: 12px;
+}
+
+.item-total {
+  font-weight: bold;
+  color: #f56c6c;
+}
+
+.price-summary {
+  border-top: 1px solid #ebeef5;
+  padding-top: 15px;
+  margin-bottom: 20px;
+}
+
+.price-row {
   display: flex;
   justify-content: space-between;
   margin-bottom: 10px;
 }
 
-.summary-item.total {
+.price-row.total {
   font-size: 18px;
-  border-top: 1px solid #ddd;
+  font-weight: bold;
+  color: #f56c6c;
+  border-top: 1px solid #ebeef5;
   padding-top: 10px;
   margin-top: 10px;
 }
 
-.total-price {
-  color: #f56c6c;
-  font-size: 20px;
-  font-weight: bold;
+.submit-order {
+  margin-top: 20px;
 }
 
-.step-actions {
-  margin-top: 30px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.address-list {
-  margin-bottom: 20px;
-}
-
-.address-item {
-  margin-bottom: 15px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 10px;
-}
-
-.address-item:hover {
-  border-color: #409eff;
-}
-
-.address-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.address-info p {
-  margin: 5px 0;
-}
-
-.add-address {
-  margin: 20px 0;
-}
-
-.payment-methods {
-  margin: 30px 0;
-}
-
-.payment-method-item {
-  margin-bottom: 15px;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.payment-method-content {
-  display: flex;
-  align-items: center;
-}
-
-.payment-method-content img {
-  margin-right: 10px;
-}
-
-.order-success {
-  padding: 50px 0;
+@media (max-width: 768px) {
+  .checkout-main {
+    flex-direction: column-reverse;
+  }
 }
 </style> 

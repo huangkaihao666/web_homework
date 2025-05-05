@@ -1,28 +1,45 @@
-import api from './index'
+import request from './index'
 
 export default {
   // 获取购物车商品列表
   getCartItems() {
-    return api.get('/cart')
+    return request({
+      url: '/cart',
+      method: 'get'
+    })
   },
   
   // 添加商品到购物车
-  addToCart(productData) {
-    return api.post('/cart', productData)
+  addToCart(data) {
+    return request({
+      url: '/cart',
+      method: 'post',
+      data
+    })
   },
   
-  // 更新购物车商品数量
-  updateCartItem(itemId, updateData) {
-    return api.patch(`/cart/${itemId}`, updateData)
+  // 更新购物车商品
+  updateCartItem(id, data) {
+    return request({
+      url: `/cart/${id}`,
+      method: 'put',
+      data
+    })
   },
   
   // 从购物车移除商品
-  removeCartItem(itemId) {
-    return api.delete(`/cart/${itemId}`)
+  removeCartItem(id) {
+    return request({
+      url: `/cart/${id}`,
+      method: 'delete'
+    })
   },
   
   // 清空购物车
   clearCart() {
-    return api.delete('/cart')
+    return request({
+      url: '/cart',
+      method: 'delete'
+    })
   }
 }

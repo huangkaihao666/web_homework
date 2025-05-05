@@ -135,20 +135,37 @@ const loadCartData = async () => {
   loading.value = true
   
   try {
+    console.log('开始获取购物车数据')
     const res = await cartApi.getCartItems()
+    console.log('购物车API返回数据:', res)
+    
+    // 防止后端返回null或非数组数据
+    if (!res || !Array.isArray(res)) {
+      console.warn('购物车API返回非数组数据:', res)
+      cartItems.value = []
+      return
+    }
     
     // 替换所有商品图片为统一图片
     cartItems.value = res.map(item => ({
       ...item,
       selected: false, // 添加选择状态
-      product: {
+      product: item.product ? {
         ...item.product,
         imgUrl: item.product.imgUrl || DEFAULT_PRODUCT_IMAGE // 使用原始URL，在显示时会通过代理访问
+      } : {
+        id: item.productId || 0,
+        name: '未知商品',
+        price: 0,
+        stock: 0,
+        imgUrl: DEFAULT_PRODUCT_IMAGE
       }
     }))
+    
+    console.log('处理后的购物车数据:', cartItems.value)
   } catch (error) {
     console.error('获取购物车数据失败:', error)
-    ElMessage.error('获取购物车数据失败')
+    ElMessage.error('获取购物车数据失败，请稍后重试')
     
     // 如果API调用失败，使用默认数据
     cartItems.value = [

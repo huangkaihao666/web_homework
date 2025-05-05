@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ProxyModule } from './proxy/proxy.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { CartModule } from './cart/cart.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     CategoriesModule,
     ProxyModule,
     DashboardModule,
+    CartModule,
   ],
   controllers: [AppController],
   providers: [AppService],

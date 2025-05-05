@@ -25,7 +25,7 @@ const logout = () => {
             <el-icon><ShoppingCart /></el-icon>
             购物车
           </el-menu-item>
-          <el-menu-item index="/orders">
+          <el-menu-item index="/user/orders">
             <el-icon><List /></el-icon>
             我的订单
           </el-menu-item>
