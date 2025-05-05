@@ -37,7 +37,7 @@
           <el-checkbox v-model="item.selected" @change="handleItemSelectChange"></el-checkbox>
           
           <div class="item-image">
-            <el-image :src="productImage" fit="cover"></el-image>
+            <el-image :src="item.product.imgUrl" fit="cover"></el-image>
           </div>
           
           <div class="item-info">
@@ -135,7 +135,7 @@ const loadCartData = async () => {
       selected: false, // 添加选择状态
       product: {
         ...item.product,
-        image: productImage
+        imgUrl: productImage
       }
     }))
   } catch (error) {
@@ -153,7 +153,7 @@ const loadCartData = async () => {
           name: '高端智能手机',
           price: 4999,
           stock: 100,
-          image: productImage
+          imgUrl: productImage
         },
         specs: {
           颜色: '深空黑',
@@ -169,7 +169,7 @@ const loadCartData = async () => {
           name: '超薄笔记本电脑',
           price: 6999,
           stock: 80,
-          image: productImage
+          imgUrl: productImage
         },
         specs: {
           颜色: '银色',
@@ -185,7 +185,7 @@ const loadCartData = async () => {
           name: '有机新鲜水果',
           price: 99,
           stock: 50,
-          image: productImage
+          imgUrl: productImage
         }
       }
     ]

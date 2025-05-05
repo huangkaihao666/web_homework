@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 
+// 统一的图片URL
+const DEFAULT_IMAGE_URL = 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp';
+
 @Injectable()
 export class ProductsService {
   private products = [
@@ -11,7 +14,7 @@ export class ProductsService {
       price: 299,
       stock: 100,
       categoryId: 1,
-      imgUrl: 'https://via.placeholder.com/300x300?text=Product+1'
+      imgUrl: DEFAULT_IMAGE_URL
     },
     {
       id: 2,
@@ -20,7 +23,7 @@ export class ProductsService {
       price: 599,
       stock: 50,
       categoryId: 2,
-      imgUrl: 'https://via.placeholder.com/300x300?text=Product+2'
+      imgUrl: DEFAULT_IMAGE_URL
     },
     {
       id: 3,
@@ -29,7 +32,7 @@ export class ProductsService {
       price: 99,
       stock: 200,
       categoryId: 3,
-      imgUrl: 'https://via.placeholder.com/300x300?text=Product+3'
+      imgUrl: DEFAULT_IMAGE_URL
     },
   ];
 
@@ -52,7 +55,9 @@ export class ProductsService {
     const newId = Math.max(...this.products.map(p => p.id)) + 1;
     const newProduct = {
       id: newId,
-      ...createProductDto
+      ...createProductDto,
+      // 确保新产品使用默认图片URL
+      imgUrl: DEFAULT_IMAGE_URL
     };
     this.products.push(newProduct);
     return newProduct;
@@ -66,7 +71,9 @@ export class ProductsService {
     
     this.products[index] = {
       ...this.products[index],
-      ...updateProductDto
+      ...updateProductDto,
+      // 确保更新后的产品使用默认图片URL
+      imgUrl: DEFAULT_IMAGE_URL
     };
     
     return this.products[index];

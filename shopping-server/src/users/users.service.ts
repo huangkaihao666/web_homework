@@ -2,6 +2,9 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 import { OrdersService } from '../orders/orders.service';
 
+// 统一的图片URL
+const DEFAULT_IMAGE_URL = 'https://gd-hbimg.huaban.com/b28f3a92ab819aec999d9fcd044b67083e612cac8efad8-qmD6XC_fw480webp';
+
 @Injectable()
 export class UsersService {
   constructor(private readonly ordersService: OrdersService) {}
@@ -12,7 +15,7 @@ export class UsersService {
       username: 'admin',
       email: 'admin@example.com',
       password: '123456', // 实际应用中应该使用哈希密码
-      avatar: 'https://via.placeholder.com/150',
+      avatar: DEFAULT_IMAGE_URL,
       role: 'admin'
     },
     {
@@ -20,7 +23,7 @@ export class UsersService {
       username: 'user1',
       email: 'user1@example.com',
       password: '123456', // 实际应用中应该使用哈希密码
-      avatar: 'https://via.placeholder.com/150',
+      avatar: DEFAULT_IMAGE_URL,
       role: 'user'
     }
   ];
@@ -72,7 +75,7 @@ export class UsersService {
       username: createUserDto.username,
       email: createUserDto.email,
       password: createUserDto.password,
-      avatar: createUserDto.avatar || 'https://via.placeholder.com/150',  // 设置默认头像
+      avatar: DEFAULT_IMAGE_URL,  // 始终使用默认头像
       role: 'user'
     };
     
@@ -110,7 +113,9 @@ export class UsersService {
     
     this.users[index] = {
       ...this.users[index],
-      ...updateUserDto
+      ...updateUserDto,
+      // 确保头像始终是默认头像
+      avatar: DEFAULT_IMAGE_URL
     };
     
     const { password, ...result } = this.users[index];

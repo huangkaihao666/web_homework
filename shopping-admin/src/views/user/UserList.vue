@@ -37,7 +37,7 @@
         
         <el-table-column label="头像" width="100">
           <template #default="scope">
-            <el-avatar :size="40" :src="userAvatar">
+            <el-avatar :size="40" :src="scope.row.imgUrl">
               <el-icon><User /></el-icon>
             </el-avatar>
           </template>
@@ -189,90 +189,32 @@ const getOrderStatusType = (status) => {
 const loadUsers = async () => {
   loading.value = true
   
+  const params = {
+    page: currentPage.value,
+    limit: pageSize.value,
+    userId: searchForm.userId || undefined,
+    username: searchForm.username || undefined,
+    startDate: searchForm.dateRange?.[0] || undefined,
+    endDate: searchForm.dateRange?.[1] || undefined
+  }
+  
   try {
-    const params = {
-      page: currentPage.value,
-      limit: pageSize.value,
-      userId: searchForm.userId || undefined,
-      username: searchForm.username || undefined,
-      startDate: searchForm.dateRange?.[0] || undefined,
-      endDate: searchForm.dateRange?.[1] || undefined
-    }
-    
+    console.log('正在调用用户API:', params)
     const res = await userApi.getUsers(params)
+    console.log('API返回数据:', res)
     
     // 替换所有用户头像为统一图片
     tableData.value = res.map(user => ({
       ...user,
-      avatar: userAvatar
+      imgUrl: userAvatar
     }))
     
-    total.value = res.total
+    total.value = res.total || res.length
   } catch (error) {
     console.error('获取用户列表失败:', error)
-    ElMessage.error('获取用户列表失败')
-    
-    // 如果API调用失败，使用默认数据
-    const mockData = [
-      {
-        id: 1,
-        username: 'user001',
-        email: 'user001@example.com',
-        phone: '13800138001',
-        avatar: userAvatar,
-        registerTime: '2024-01-01 10:00:00',
-        lastLoginTime: '2024-05-03 15:20:30',
-        status: 'active'
-      },
-      {
-        id: 2,
-        username: 'user002',
-        email: 'user002@example.com',
-        phone: '13800138002',
-        avatar: userAvatar,
-        registerTime: '2024-01-05 14:30:20',
-        lastLoginTime: '2024-05-02 09:15:40',
-        status: 'active'
-      },
-      {
-        id: 3,
-        username: 'user003',
-        email: 'user003@example.com',
-        phone: '13800138003',
-        avatar: userAvatar,
-        registerTime: '2024-02-10 09:40:15',
-        lastLoginTime: '2024-05-01 14:25:10',
-        status: 'inactive'
-      }
-    ]
-    
-    // 模拟筛选逻辑
-    let filteredData = [...mockData]
-    
-    if (searchForm.userId) {
-      filteredData = filteredData.filter(item => 
-        item.id.toString().includes(searchForm.userId)
-      )
-    }
-    
-    if (searchForm.username) {
-      filteredData = filteredData.filter(item => 
-        item.username.toLowerCase().includes(searchForm.username.toLowerCase())
-      )
-    }
-    
-    if (searchForm.dateRange && searchForm.dateRange.length === 2) {
-      const startDate = new Date(searchForm.dateRange[0]).getTime()
-      const endDate = new Date(searchForm.dateRange[1] + ' 23:59:59').getTime()
-      
-      filteredData = filteredData.filter(item => {
-        const registerTime = new Date(item.registerTime).getTime()
-        return registerTime >= startDate && registerTime <= endDate
-      })
-    }
-    
-    tableData.value = filteredData
-    total.value = filteredData.length
+    ElMessage.error('获取用户列表失败: ' + (error.message || '未知错误'))
+    tableData.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -316,7 +258,7 @@ const viewUser = async (user) => {
     // 将获取到的用户详情合并到当前用户对象
     currentUser.value = { 
       ...userDetail,
-      avatar: userAvatar
+      imgUrl: userAvatar
     }
     
     // 由于后端API未实现用户订单接口，这里使用模拟数据
